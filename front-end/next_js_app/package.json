@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "next lint"
   },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} ./prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "^6.10.1",
     "@supabase/supabase-js": "^2.50.1",
