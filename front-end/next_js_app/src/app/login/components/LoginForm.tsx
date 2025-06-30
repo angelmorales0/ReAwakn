@@ -5,14 +5,28 @@ import { Label } from "@/components/ui/label";
 import { login } from "@/lib/auth-actions";
 import { redirect } from "next/dist/server/api-utils";
 import { useRouter } from "next/navigation";
-
+import { useState } from "react";
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
   const router = useRouter();
+
+  const [logInData, setLogInData] = useState({
+    email: "",
+    password: "",
+  });
+  const handleLogin = async (e: any) => {
+    e.preventDefault();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: logInData.email,
+      password: logInData.password,
+    });
+  };
+
   return (
     <form
+      onSubmit={handleLogin}
       className={cn("flex flex-col gap-6", className)}
       action={login}
       {...props}
@@ -27,6 +41,12 @@ export function LoginForm({
         <div className="grid gap-3">
           <Label htmlFor="email">Email</Label>
           <Input
+            onChange={(e) =>
+              setLogInData((prev) => ({
+                ...prev,
+                email: e.target.value,
+              }))
+            }
             id="email"
             name="email"
             type="email"
@@ -44,7 +64,18 @@ export function LoginForm({
               Forgot your password?
             </a>
           </div>
-          <Input id="password" name="password" type="password" required />
+          <Input
+            onChange={(e) =>
+              setLogInData((prev) => ({
+                ...prev,
+                password: e.target.value,
+              }))
+            }
+            id="password"
+            name="password"
+            type="password"
+            required
+          />
         </div>
         <Button type="submit" className="w-full">
           Login
