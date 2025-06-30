@@ -83,7 +83,7 @@ export function SignUpForm() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="last-name">Last name</Label>
-                <Input
+                <Input  
                   onChange={(e) =>
                     setUserData((prev) => ({
                       ...prev,

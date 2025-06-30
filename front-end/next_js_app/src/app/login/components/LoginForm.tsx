@@ -6,11 +6,14 @@ import { login } from "@/lib/auth-actions";
 import { redirect } from "next/dist/server/api-utils";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import supabase from "@/app/utils/supabase/client";
+
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
   const router = useRouter();
+  const supabaseClient = supabase();
 
   const [logInData, setLogInData] = useState({
     email: "",
@@ -18,10 +21,15 @@ export function LoginForm({
   });
   const handleLogin = async (e: any) => {
     e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
       email: logInData.email,
       password: logInData.password,
     });
+      if (error) {
+    alert(error.message);
+  } else {
+    router.push("/");
+  }
   };
 
   return (
