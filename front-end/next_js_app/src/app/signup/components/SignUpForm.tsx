@@ -31,7 +31,7 @@ export function SignUpForm() {
     const { error } = await supabaseClient
       .from("users")
       .insert(userData)
-      .single(); //updates database
+      .single();
     const { data: signUpData, error: signUpError } =
       await supabaseClient.auth.signUp({
         email: userData.email,
@@ -83,7 +83,7 @@ export function SignUpForm() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="last-name">Last name</Label>
-                <Input  
+                <Input
                   onChange={(e) =>
                     setUserData((prev) => ({
                       ...prev,

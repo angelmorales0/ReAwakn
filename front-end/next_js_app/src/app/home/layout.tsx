@@ -1,7 +1,4 @@
-//This is loaded? learn how layout.tsx works for next js
-
 import { createClient } from "@supabase/supabase-js";
-import { Herr_Von_Muellerhoff } from "next/font/google";
 import { redirect } from "next/navigation";
 
 export default async function Layout({

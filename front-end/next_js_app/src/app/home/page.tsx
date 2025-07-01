@@ -6,7 +6,6 @@ export default async function HomePage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Get user data from Supabase auth
   const {
     data: { user },
     error,
