@@ -13,6 +13,7 @@ const UserGreetText = () => {
         data: { user },
       } = await supabase.auth.getUser();
       setUser(user);
+      console.log(user?.user_metadata.user_name, 3);
       if (user?.email) {
         const { data, error } = await supabase
           .from("users")
@@ -22,6 +23,8 @@ const UserGreetText = () => {
 
         if (data && !error) {
           setFirstName(data.first_name);
+        } else if (user.user_metadata.user_name) {
+          setFirstName(user.user_metadata.user_name);
         } else {
           console.log(error);
         }

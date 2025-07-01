@@ -1,8 +1,12 @@
+"use client";
 import LoginButton from "@/components/ui/LoginLogoutButton";
 import UserGreetText from "@/components/ui/userGreetText";
 import Image from "next/image";
-
+import { useState, useEffect } from "react";
+import supabase from "@/app/utils/supabase/client";
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">

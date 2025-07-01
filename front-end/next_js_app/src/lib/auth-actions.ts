@@ -72,6 +72,7 @@ export async function signInWithGithub() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "github",
   });
+  console.log(data, 2);
 
   if (error) {
     console.log(error);
