@@ -31,7 +31,7 @@ export function SignUpForm() {
     const { error } = await supabaseClient
       .from("users")
       .insert(userData)
-      .single(); //updates database
+      .single();
     const { data: signUpData, error: signUpError } =
       await supabaseClient.auth.signUp({
         email: userData.email,

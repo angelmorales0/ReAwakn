@@ -1,9 +1,7 @@
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 
-// Ensure the correct path to the module is used
 import { createClient } from "@/app/utils/supabase/server";
-//@ just makes it so it comes in from ./src
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");

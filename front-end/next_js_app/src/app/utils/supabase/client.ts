@@ -6,4 +6,3 @@ export default function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }
-//CREATES SUPABASE CLIENT
