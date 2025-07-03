@@ -8,34 +8,29 @@ export default function ChatInput() {
   const supabase = createClient();
 
   const sendMessage = async (text: string) => {
-    // Check if user is authenticated first
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError) {
-      console.error('Auth error:', authError);
-      toast.error('Authentication error');
+      toast.error("Authentication error");
       return;
     }
 
     if (!user) {
-      toast.error('You must be logged in to send messages');
-      console.log('No user found - please log in');
+      toast.error("You must be logged in to send messages");
       return;
     }
 
-
-    const { data, error } = await supabase
-      .from("messages")
-      .insert({
-        text,
-        sent_by: user.id
-      });
+    const { data, error } = await supabase.from("messages").insert({
+      text,
+      sent_by: user.id,
+    });
 
     if (error) {
-      console.error('Insert error:', error);
       toast.error(`Error: ${error.message}`);
     } else {
-      console.log('Message inserted successfully:', data);
       toast.success("Message sent!");
     }
   };

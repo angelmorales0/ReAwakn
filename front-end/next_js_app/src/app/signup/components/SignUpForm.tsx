@@ -24,7 +24,7 @@ export function SignUpForm() {
   });
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const supabaseClient = supabase();
 

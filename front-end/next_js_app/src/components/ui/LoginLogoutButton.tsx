@@ -4,16 +4,20 @@ import { Button } from "./button";
 import { useRouter } from "next/navigation";
 import createClient from "@/app/utils/supabase/client";
 import { signout } from "@/lib/auth-actions";
-
+import { User } from "@supabase/supabase-js";
 const LoginButton = () => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const supabase = createClient();
   useEffect(() => {
     const fetchUser = async () => {
       const {
-        data: { user },
+        data: { user: fetchedUser },
       } = await supabase.auth.getUser();
+      if (fetchedUser) {
+        setUser(fetchedUser);
+      }
+
       setUser(user);
     };
     fetchUser();

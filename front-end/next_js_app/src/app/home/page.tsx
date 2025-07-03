@@ -11,7 +11,6 @@ export default async function HomePage() {
     error,
   } = await supabase.auth.getUser();
 
-  console.log("User:", user);
   if (error) {
     console.error("Error fetching user:", error);
   }

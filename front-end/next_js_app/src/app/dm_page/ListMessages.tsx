@@ -2,10 +2,11 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import createClient from "@/app/utils/supabase/client";
+import { Message } from "@/types/types";
 
 export default function ListMessages() {
   const supabase = createClient();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -22,7 +23,6 @@ export default function ListMessages() {
 
     fetchMessages();
   }, []);
-  console.log("msg", messages); // Each message should have name, message
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">

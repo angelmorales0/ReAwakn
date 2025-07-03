@@ -16,7 +16,6 @@ async function main() {
       password: "1234",
     },
   });
-  console.log(user);
 }
 
 main().then(() => prisma.$disconnect());
