@@ -9,13 +9,6 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const getSession = async () => {
-    const {
-      data: { session },
-    } = await supabase().auth.getSession();
-    console.log("session", session);
-  };
-
   await supabase().auth.getUser();
 
   return response;
