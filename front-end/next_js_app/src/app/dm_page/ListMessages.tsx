@@ -15,7 +15,6 @@ export default function ListMessages() {
         .select("created_at, text, sent_by");
 
       if (error) {
-        console.error("Error fetching messages:", error);
       } else {
         setMessages(data);
       }

@@ -24,13 +24,11 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(`${origin}${next}`);
         }
       } else {
-        console.error("Auth callback error:", error);
         return NextResponse.redirect(
           `${origin}/error?message=${encodeURIComponent(error.message)}`
         );
       }
     } catch (err) {
-      console.error("Auth callback exception:", err);
       return NextResponse.redirect(
         `${origin}/error?message=${encodeURIComponent("Authentication failed")}`
       );
