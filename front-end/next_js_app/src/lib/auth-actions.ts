@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createClient } from "@/app/utils/supabase/server";
+import createClient from "@/app/utils/supabase/server";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -60,7 +60,6 @@ export async function signout() {
   const supabase = await createClient();
   const { error } = await supabase.auth.signOut();
   if (error) {
-    console.log(error);
     redirect("/error");
   }
 
@@ -77,7 +76,6 @@ export async function signInWithGithub() {
   });
 
   if (error) {
-    console.log(error);
     redirect("/error");
   }
 

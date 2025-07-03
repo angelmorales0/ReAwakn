@@ -18,38 +18,30 @@ import supabase from "@/app/utils/supabase/client";
 
 export function SignUpForm() {
   const [userData, setUserData] = useState({
-    first_name: "",
-    last_name: "",
+    display_name: "",
     email: "",
     password: "",
   });
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const supabaseClient = supabase();
-    const { error } = await supabaseClient
-      .from("users")
-      .insert(userData)
-      .single();
+
     const { data: signUpData, error: signUpError } =
       await supabaseClient.auth.signUp({
         email: userData.email,
         password: userData.password,
+        options: {
+          data: {
+            user_name: userData.display_name,
+          },
+        },
       });
 
     if (signUpError) {
       alert(signUpError);
     } else {
-      if (signUpData.user) {
-        console.log("User ID:", signUpData.user.id);
-        console.log("Email:", signUpData.user.email);
-        console.log("Full Name:", signUpData.user.user_metadata.full_name);
-        console.log(
-          "Email Confirmed:",
-          signUpData.user.email_confirmed_at !== null
-        );
-      }
       setShowVerificationMessage(true);
     }
   };
@@ -67,32 +59,17 @@ export function SignUpForm() {
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="first-name">First name</Label>
+                <Label htmlFor="first-name">Display Name</Label>
                 <Input
                   onChange={(e) =>
                     setUserData((prev) => ({
                       ...prev,
-                      first_name: e.target.value,
+                      display_name: e.target.value,
                     }))
                   }
                   name="first-name"
                   id="first-name"
                   placeholder="Max"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="last-name">Last name</Label>
-                <Input
-                  onChange={(e) =>
-                    setUserData((prev) => ({
-                      ...prev,
-                      last_name: e.target.value,
-                    }))
-                  }
-                  name="last-name"
-                  id="last-name"
-                  placeholder="Robinson"
                   required
                 />
               </div>
@@ -121,7 +98,12 @@ export function SignUpForm() {
                 type="password"
               />
             </div>
-            <Button formAction={signup} type="submit" className="w-full">
+            <Button
+              formAction={signup}
+              type="submit"
+              className="w-full"
+              disabled={showVerificationMessage}
+            >
               Create an account
             </Button>
           </div>
