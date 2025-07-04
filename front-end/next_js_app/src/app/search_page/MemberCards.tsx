@@ -1,4 +1,5 @@
 interface Member {
+  id: string;
   name: string;
   email?: string;
 }
@@ -7,14 +8,19 @@ interface MemberCardProps {
   member: Member;
   onConnect?: (member: Member) => void;
 }
+import { useRouter } from "next/navigation";
 
 function MemberCard({ member, onConnect }: MemberCardProps) {
+  const router = useRouter();
+
   const handleConnect = () => {
     if (onConnect) {
       onConnect(member);
     }
   };
-  const viewProfile = () => {};
+  const viewProfile = async (props: { id: string }) => {
+    router.push(`/profile_page?id=${props.id}`);
+  };
 
   return (
     <div className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 p-6">
@@ -40,7 +46,7 @@ function MemberCard({ member, onConnect }: MemberCardProps) {
           Connect
         </button>
         <button
-          onClick={viewProfile}
+          onClick={() => viewProfile({ id: member.id })}
           className="w-full px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           View Profile
@@ -56,6 +62,8 @@ interface MemberCardsProps {
 }
 
 export default function MemberCards({ members, onConnect }: MemberCardsProps) {
+  const router = useRouter();
+
   if (members.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
