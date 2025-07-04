@@ -17,8 +17,7 @@ const LoginButton = () => {
       if (fetchedUser) {
         setUser(fetchedUser);
       }
-
-      setUser(user);
+      setUser(fetchedUser);
     };
     fetchUser();
   }, []);
