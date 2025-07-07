@@ -4,12 +4,10 @@ import SearchBar from "./SearchBar";
 import MemberCards from "./MemberCards";
 import createClient from "@/app/utils/supabase/client";
 
-// Define the Member type
 interface Member {
   id: string;
   name: string;
   email?: string;
-  // Add other member properties as needed
 }
 
 export default function SearchPage() {
@@ -17,7 +15,6 @@ export default function SearchPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const supabase = createClient();
 
-  // Fetch members from database on component mount
   useEffect(() => {
     const fetchMembers = async () => {
       const { data, error } = await supabase
