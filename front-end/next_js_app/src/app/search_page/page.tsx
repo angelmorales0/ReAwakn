@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import SearchBar from "./SearchBar";
 import MemberCards from "./MemberCards";
 import createClient from "@/app/utils/supabase/client";
+import HomeButton from "@/components/homeButton";
 
 interface Member {
   id: string;
@@ -41,7 +42,11 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto md:py-10 h-screen">
+    <div className="max-w-3xl mx-auto md:py-10 h-screen relative">
+      <div className="fixed top-4 left-4 z-10">
+        <HomeButton />
+      </div>
+
       <div className="h-full border rounded-md flex flex-col">
         <SearchBar
           onSearchChange={handleSearchChange}
