@@ -1,29 +1,15 @@
-interface Member {
-  id: string;
-  name: string;
-  email?: string;
-}
-
 import { useRouter } from "next/navigation";
+import { Member } from "@/types/member";
 import createClient from "@/app/utils/supabase/client";
-import {useState } from "react";
+import { useState } from "react";
 import { useEffect } from "react";
-
-/**
- *
- * SELECT f1.owner_id, f1.friend_id
-FROM friends f1
-JOIN friends f2 ON f1.owner_id = f2.friend_id AND f1.friend_id = f2.owner_id
-WHERE f1.owner_id = ? AND f1.friend_id = ?;
-IF FRIENDS WE CHECK BY THIS SQL QUERY
-NEED TO ADD A QUERY TO CHECK, ALSO DONT SHOW CARD IF Y
-*/
 
 export default function MemberCard({ member }: { member: Member }) {
   const [isDisabled, setIsDisabled] = useState(false);
-  const [newConnect, setNewConnect] = useState(false);
+
   const supabase = createClient();
   const router = useRouter();
+
   const [isFriends, setIsFriends] = useState(false);
 
   const checkFriends = async () => {
@@ -53,20 +39,21 @@ export default function MemberCard({ member }: { member: Member }) {
 
   useEffect(() => {
     checkFriends();
-  }, [newConnect, isFriends]);
+  }, [isFriends]);
   useEffect(() => {}, [isFriends]);
 
   const handleConnect = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const { data, error } = await supabase
+    await supabase
       .from("friends")
       .insert({ owner: user?.id, friend: member.id });
-    setNewConnect(true);
+    checkFriends();
   };
-  const viewProfile = async (props: { id: string }) => {
-    router.push(`/profile_page?id=${props.id}`);
+
+  const viewProfile = (id: string) => {
+    router.push(`/profile_page?id=${id}`);
   };
 
   const handleDM = async () => {
@@ -89,7 +76,6 @@ export default function MemberCard({ member }: { member: Member }) {
         .from("dm_conversations")
         .insert({ user1_id: user?.id, user2_id: member.id });
     }
-
   };
 
   return (
@@ -111,7 +97,7 @@ export default function MemberCard({ member }: { member: Member }) {
 
         {isFriends ? (
           <button
-            onClick={handleDM} // This is the new function for handling DM
+            onClick={handleDM}
             className="w-full px-4 py-2 text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 mb-2 bg-blue-500 hover:bg-blue-600 focus:ring-blue-500"
           >
             DM
@@ -130,7 +116,7 @@ export default function MemberCard({ member }: { member: Member }) {
           </button>
         )}
         <button
-          onClick={() => viewProfile({ id: member.id })}
+          onClick={() => viewProfile(member.id)}
           className="w-full px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           View Profile
