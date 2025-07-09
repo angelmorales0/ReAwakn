@@ -1,12 +1,12 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import SearchBar from "./SearchBar";
-import MemberList from "./MemberList";
 import MemberCards from "./MemberCards";
 import createClient from "@/app/utils/supabase/client";
 
 // Define the Member type
 interface Member {
+  id: string;
   name: string;
   email?: string;
   // Add other member properties as needed
@@ -15,7 +15,6 @@ interface Member {
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const supabase = createClient();
 
   // Fetch members from database on component mount
@@ -23,10 +22,11 @@ export default function SearchPage() {
     const fetchMembers = async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("display_name,email")
+        .select("id, display_name,email")
         .like("display_name", `${searchTerm}%`);
       if (data) {
         const formattedData = data.map((user) => ({
+          id: user.id,
           name: user.display_name,
           email: user.email,
         }));
