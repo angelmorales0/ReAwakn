@@ -72,10 +72,13 @@ export default function MemberCard({ member }: { member: Member }) {
     const convo = data?.[0];
 
     if (!convo) {
+      //if convo doesn't exist, create it
       const { data, error } = await supabase
         .from("dm_conversations")
         .insert({ user1_id: user?.id, user2_id: member.id });
     }
+
+    router.push(`/dm_page?id=${convo?.id}&user=${member.name}`);
   };
 
   return (
