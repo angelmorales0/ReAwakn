@@ -6,7 +6,6 @@ interface ListMessagesProps {
   messages: Message[];
 }
 import createClient from "../utils/supabase/client";
-import { REALTIME_POSTGRES_CHANGES_LISTEN_EVENT } from "@supabase/supabase-js";
 
 export default function ListMessages({ messages }: ListMessagesProps) {
   const supabase = createClient();
