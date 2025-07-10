@@ -4,12 +4,7 @@ import SearchBar from "./SearchBar";
 import MemberCards from "./MemberCards";
 import createClient from "@/app/utils/supabase/client";
 import HomeButton from "@/components/homeButton";
-
-interface Member {
-  id: string;
-  name: string;
-  email?: string;
-}
+import { Member } from "@/types/member";
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,7 +16,7 @@ export default function SearchPage() {
       const { data, error } = await supabase
         .from("users")
         .select("id, display_name,email")
-        .like("display_name", `${searchTerm}%`);
+        .ilike("display_name", `${searchTerm}%`);
       if (data) {
         const formattedData = data.map((user) => ({
           id: user.id,
