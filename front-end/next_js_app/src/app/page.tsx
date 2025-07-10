@@ -1,11 +1,9 @@
 "use client";
-import LoginButton from "@/components/ui/LoginLogoutButton";
 import UserGreetText from "@/components/ui/userGreetText";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import supabase from "@/app/utils/supabase/client";
-import { Button } from "@/components/ui/button";
-
+import HomeHeader from "@/components/homeHeader";
 export default function Home() {
   const router = useRouter();
 
@@ -28,28 +26,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
         <UserGreetText />
-        <div className="flex items-center justify-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => {
-              router.push("/search_page");
-            }}
-          >
-            Search
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              router.push("/profile_page");
-            }}
-          >
-            Profile
-          </Button>
-        </div>
-
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <LoginButton />
-        </div>
+        <HomeHeader />
       </div>
       <p>SOCIAL WALL GOES HERE</p>
 
