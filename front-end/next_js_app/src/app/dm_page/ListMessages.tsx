@@ -9,8 +9,6 @@ export default function ListMessages() {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-
-
     const fetchMessages = async () => {
       const { data, error } = await supabase
         .from("messages")
