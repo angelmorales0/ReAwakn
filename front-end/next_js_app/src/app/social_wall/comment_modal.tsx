@@ -30,7 +30,6 @@ export default function CommentModal({
   }, []);
 
   if (!isModalOpen || !isMounted) return null;
-  // Had to use create portal to ensure modal was rendered into doc on client side before server side
   return createPortal(
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-100">
       <div
