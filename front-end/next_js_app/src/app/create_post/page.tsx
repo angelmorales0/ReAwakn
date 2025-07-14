@@ -41,7 +41,6 @@ export default function CreatePost() {
     setIsSubmitting(true);
 
     const user = await getCurrentUser();
-    console.log(user, "!");
     if (!user) {
       alert("You must be logged in to create a post");
       router.push("/login");
