@@ -1,13 +1,15 @@
 import React, { Suspense } from "react";
 import ListMessages from "./ListMessages";
-import supabaseServer from "@/app/utils/supabase/server";
-export default async function ChatMessage() {
-  const supabase = await supabaseServer(); //does server stuf
+import { Message } from "@/types/types";
 
-  const { data } = await supabase.from("messages").select("*");
+interface ChatMessageProps {
+  messages: Message[];
+}
+
+export default function ChatMessage({ messages }: ChatMessageProps) {
   return (
     <Suspense fallback={"loading..."}>
-      <ListMessages />
+      <ListMessages messages={messages} />
     </Suspense>
   );
 }
