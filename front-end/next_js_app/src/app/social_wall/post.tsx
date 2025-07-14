@@ -2,6 +2,7 @@
 import React, { use, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import createClient from "@/app/utils/supabase/client";
+import CommentModal from "./comment_modal";
 
 type Post = {
   id: string;
@@ -18,6 +19,9 @@ interface PostProps {
 }
 
 export default function PostCard({ post, formatDate }: PostProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [commentList, setCommentList] = useState<any>([]);
   const supabase = createClient();
   const [isAlreadyLiked, setIsAlreadyLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
@@ -27,7 +31,27 @@ export default function PostCard({ post, formatDate }: PostProps) {
     } = await supabase.auth.getUser();
     return user;
   };
-  const handleComment = () => {};
+  const handleSubmitComment = async () => {
+    //make a supabase insert on comments table
+    const user = await getUser();
+    const { data, error } = await supabase.from("post_comments").insert([
+      {
+        post_id: post.id,
+        author_id: user?.id,
+        post_content: commentText,
+        author_name: user?.user_metadata.user_name,
+      },
+    ]);
+    setIsModalOpen(false);
+  };
+
+  const getComments = async () => {
+    const { data, error } = await supabase
+      .from("post_comments")
+      .select("author_name, post_content")
+      .eq("post_id", post.id);
+    setCommentList(data);
+  };
 
   const alreadyLiked = async () => {
     const user = await getUser();
@@ -69,7 +93,6 @@ export default function PostCard({ post, formatDate }: PostProps) {
         .from("post_likes")
         .delete()
         .match({ user_id: user?.id, post_id: post.id });
-      console.log(data, error);
     } else {
       if (user) {
         const { error } = await supabase
@@ -128,7 +151,10 @@ export default function PostCard({ post, formatDate }: PostProps) {
             variant="ghost"
             size="sm"
             className="flex items-center space-x-1 text-gray-600 hover:text-blue-500"
-            onClick={handleComment}
+            onClick={() => {
+              setIsModalOpen(true);
+              getComments();
+            }}
           >
             <span>💬</span>
             <span>Comment</span>
@@ -138,6 +164,14 @@ export default function PostCard({ post, formatDate }: PostProps) {
         <span className="text-xs text-gray-400">
           {formatDate(post.created_at)}
         </span>
+        <CommentModal
+          isModalOpen={isModalOpen}
+          setIsModalOpen={setIsModalOpen}
+          handleSubmitComment={handleSubmitComment}
+          comment={commentText}
+          setComment={setCommentText}
+          comments={commentList}
+        />
       </div>
     </div>
   );
