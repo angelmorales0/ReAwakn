@@ -1,8 +1,7 @@
 import { useRouter } from "next/navigation";
 import { Member } from "@/types/member";
 import createClient from "@/app/utils/supabase/client";
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 
 interface MemberWithSimilarity extends Member {
   similarityScore?: number;
@@ -13,19 +12,157 @@ interface MemberCardProps {
   member: MemberWithSimilarity;
   loggedInUserId?: string;
   showSimilarityScore?: boolean;
+  loggedInUser?: any;
 }
 
 export default function MemberCard({
   member,
   loggedInUserId = "",
   showSimilarityScore = false,
+  loggedInUser,
 }: MemberCardProps) {
   const [isDisabled, setIsDisabled] = useState(false);
+  const [maxLearnScore, setMaxLearnScore] = useState<number | undefined>(
+    undefined
+  );
+  const [maxTeachScore, setMaxTeachScore] = useState<number | undefined>(
+    undefined
+  );
 
   const supabase = createClient();
   const router = useRouter();
 
   const [isFriends, setIsFriends] = useState(false);
+
+  // Cosine similarity calciculation
+  function cosineSimilarity(vecA: number[], vecB: number[]): number {
+    const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
+    const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
+    const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
+    return dotProduct / (magnitudeA * magnitudeB);
+  }
+
+  // Calculate learning/teaching similarity scores
+  async function hasSimilarSkills(loggedInUserId: any, user2ID: any) {
+    let max_learn_score = 0;
+    let max_teach_score = 0;
+
+    const { data: loggedInUserData, error: dbError } = await supabase
+      .from("user_skills")
+      .select("skill, type, embedding")
+      .eq("user_id", loggedInUserId);
+
+    let loggedInUserLearnSkills: number[][] = [];
+    let loggedInUserTeachSkills: number[][] = [];
+    loggedInUserData?.forEach((loggedInUserSkill) => {
+      if (loggedInUserSkill.type === "learn" && loggedInUserSkill.embedding) {
+        try {
+          // Parse embedding if it's a JSON string, otherwise use as-is
+          const embedding =
+            typeof loggedInUserSkill.embedding === "string"
+              ? JSON.parse(loggedInUserSkill.embedding)
+              : loggedInUserSkill.embedding;
+
+          if (Array.isArray(embedding)) {
+            loggedInUserLearnSkills.push(embedding);
+          }
+        } catch (error) {}
+      } else if (
+        loggedInUserSkill.type === "teach" &&
+        loggedInUserSkill.embedding
+      ) {
+        try {
+          // Parse embedding if it's a JSON string, otherwise use as-is
+          const embedding =
+            typeof loggedInUserSkill.embedding === "string"
+              ? JSON.parse(loggedInUserSkill.embedding)
+              : loggedInUserSkill.embedding;
+
+          if (Array.isArray(embedding)) {
+            loggedInUserTeachSkills.push(embedding);
+          }
+        } catch (error) {}
+      }
+    });
+
+    const { data: user2Data, error: db2Error } = await supabase
+      .from("user_skills")
+      .select("skill, type, embedding")
+      .eq("user_id", user2ID);
+
+    let secondaryUserLearnSkills: number[][] = [];
+    let secondaryUserTeachSkills: number[][] = [];
+
+    user2Data?.forEach((user2Skill) => {
+      if (user2Skill.type === "learn" && user2Skill.embedding) {
+        try {
+          // Parse embedding if it's a JSON string, otherwise use as-is
+          const embedding =
+            typeof user2Skill.embedding === "string"
+              ? JSON.parse(user2Skill.embedding)
+              : user2Skill.embedding;
+
+          if (Array.isArray(embedding)) {
+            secondaryUserLearnSkills.push(embedding);
+          }
+        } catch (error) {}
+      } else if (user2Skill.type === "teach" && user2Skill.embedding) {
+        try {
+          // Parse embedding if it's a JSON string, otherwise use as-is
+          const embedding =
+            typeof user2Skill.embedding === "string"
+              ? JSON.parse(user2Skill.embedding)
+              : user2Skill.embedding;
+
+          if (Array.isArray(embedding)) {
+            secondaryUserTeachSkills.push(embedding);
+          }
+        } catch (error) {}
+      }
+    });
+
+    // Calculate learning match score: logged-in user's learn skills vs other user's teach skills
+    for (let i = 0; i < loggedInUserLearnSkills.length; i++) {
+      const loggedInLearnEmbedding = loggedInUserLearnSkills[i];
+
+      for (let j = 0; j < secondaryUserTeachSkills.length; j++) {
+        const otherUserTeachEmbedding = secondaryUserTeachSkills[j];
+
+        // Calculate cosine similarity between embeddings
+        const similarity = cosineSimilarity(
+          loggedInLearnEmbedding,
+          otherUserTeachEmbedding
+        );
+
+        // Update max learning score if this similarity is higher
+        if (similarity > max_learn_score) {
+          max_learn_score = similarity;
+        }
+      }
+    }
+
+    // Calculate teaching match score: logged-in user's teach skills vs other user's learn skills
+    for (let i = 0; i < loggedInUserTeachSkills.length; i++) {
+      const loggedInTeachEmbedding = loggedInUserTeachSkills[i];
+
+      for (let j = 0; j < secondaryUserLearnSkills.length; j++) {
+        const otherUserLearnEmbedding = secondaryUserLearnSkills[j];
+
+        // Calculate cosine similarity between embeddings
+        const similarity = cosineSimilarity(
+          loggedInTeachEmbedding,
+          otherUserLearnEmbedding
+        );
+
+        // Update max teaching score if this similarity is higher
+        if (similarity > max_teach_score) {
+          max_teach_score = similarity;
+        }
+      }
+    }
+
+    return { max_learn_score, max_teach_score };
+  }
 
   const checkFriends = async () => {
     const {
@@ -55,7 +192,34 @@ export default function MemberCard({
   useEffect(() => {
     checkFriends();
   }, [isFriends]);
-  useEffect(() => {}, [isFriends]);
+
+  // Calculate learning/teaching scores when component mounts
+  useEffect(() => {
+    const calculateLearningTeachingScores = async () => {
+      if (!loggedInUser || loggedInUserId === member.id) return;
+
+      try {
+        // Get member's full data with embeddings
+        const { data: memberData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", member.id)
+          .single();
+
+        if (memberData && loggedInUser) {
+          const { max_learn_score, max_teach_score } = await hasSimilarSkills(
+            loggedInUser.id,
+            memberData.id
+          );
+
+          setMaxLearnScore(max_learn_score);
+          setMaxTeachScore(max_teach_score);
+        }
+      } catch (error) {}
+    };
+
+    calculateLearningTeachingScores();
+  }, [loggedInUser, member.id]);
 
   const handleConnect = async () => {
     const {
@@ -160,6 +324,22 @@ export default function MemberCard({
               </span>
             </div>
           )}
+
+        {/* Learning/Teaching Match Indicators */}
+        {loggedInUserId !== member.id && (
+          <div className="mb-3 space-y-1">
+            {maxLearnScore !== undefined && maxLearnScore >= 0.7 && (
+              <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                🎓 Good Learning Match
+              </div>
+            )}
+            {maxTeachScore !== undefined && maxTeachScore >= 0.7 && (
+              <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                👨‍🏫 Good Teaching Match
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="w-full space-y-2">
           {isFriends ? (

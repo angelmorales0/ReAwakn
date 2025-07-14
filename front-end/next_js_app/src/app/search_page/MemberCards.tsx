@@ -10,12 +10,14 @@ interface MemberCardsProps {
   members: MemberWithSimilarity[];
   loggedInUserId?: string;
   showSimilarityScores?: boolean;
+  loggedInUser?: any;
 }
 
 export default function MemberCards({
   members,
   loggedInUserId = "",
   showSimilarityScores = false,
+  loggedInUser,
 }: MemberCardsProps) {
   if (members.length === 0) {
     return (
@@ -39,6 +41,7 @@ export default function MemberCards({
             member={member}
             loggedInUserId={loggedInUserId}
             showSimilarityScore={showSimilarityScores}
+            loggedInUser={loggedInUser}
           />
         ))}
       </div>

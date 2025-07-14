@@ -24,6 +24,7 @@ def fetch_all_users(): #gets users table data and makes it a dataframe
         supabase = get_supabase_client()
         users_table = supabase.table('users').select('*').execute()
         df = pd.DataFrame(users_table.data)
+        return df
     except Exception as e:
         print(f"Error fetching user data: {e}")
         return pd.DataFrame()
@@ -178,6 +179,16 @@ class SimilarityService:
         else:
             self.encoders, self.user_encodings, self.feature_names = create_encoders_and_hashmap()
 
+    def _check_user_exists(self, user_id: str) -> bool:
+        """Check if a user exists in the current encodings"""
+        return self.user_encodings is not None and user_id in self.user_encodings
+
+    def _ensure_user_data(self, user_id: str):
+        """Ensure user data is available, refresh if necessary"""
+        if not self._check_user_exists(user_id):
+            print(f"User {user_id} not found in cached data, refreshing...")
+            self.refresh_data()
+
     def refresh_data(self):
         self.encoders, self.user_encodings, self.feature_names = create_encoders_and_hashmap()
         if self.use_cache:
@@ -186,11 +197,20 @@ class SimilarityService:
     def get_similarity(self, user1_id: str, user2_id: str) -> float:
         if not self.user_encodings:
             return 0.0
+
+        # Ensure both users exist in the data
+        self._ensure_user_data(user1_id)
+        self._ensure_user_data(user2_id)
+
         return calculate_user_similarity(user1_id, user2_id, self.user_encodings)
 
     def get_similar_users(self, user_id: str, top_n: int = 10) -> List[Tuple[str, float]]:
         if not self.user_encodings:
             return []
+
+        # Ensure the user exists in the data
+        self._ensure_user_data(user_id)
+
         return get_similar_users(user_id, self.user_encodings, top_n)
 
     def get_user_compatibility_score(self, user1_id: str, user2_id: str) -> Dict:
