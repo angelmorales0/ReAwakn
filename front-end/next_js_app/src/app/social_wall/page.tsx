@@ -62,7 +62,7 @@ export default function SocialWall() {
         <div className="flex flex-col space-y-8 max-w-2xl mx-auto">
           {posts.map((post, index) => (
             <PostCard key={index} post={post} formatDate={formatDate} />
-            //NEEED TO FIX POST CARD INPUT 
+            //NEEED TO FIX POST CARD INPUT
           ))}
         </div>
       )}

@@ -34,7 +34,6 @@ export default function MemberCard({
 
   const [isFriends, setIsFriends] = useState(false);
 
-  // Cosine similarity calciculation
   function cosineSimilarity(vecA: number[], vecB: number[]): number {
     const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
     const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
@@ -42,7 +41,6 @@ export default function MemberCard({
     return dotProduct / (magnitudeA * magnitudeB);
   }
 
-  // Calculate learning/teaching similarity scores
   async function hasSimilarSkills(loggedInUserId: any, user2ID: any) {
     let max_learn_score = 0;
     let max_teach_score = 0;
@@ -65,23 +63,34 @@ export default function MemberCard({
 
           if (Array.isArray(embedding)) {
             loggedInUserLearnSkills.push(embedding);
+          } else if (typeof embedding === "object" && embedding !== null) {
+            const keys = Object.keys(embedding).sort(
+              (a, b) => Number(a) - Number(b)
+            );
+            const embeddingArray = keys.map((key) => embedding[key]);
+            loggedInUserLearnSkills.push(embeddingArray);
           }
         } catch (error) {}
       } else if (
         loggedInUserSkill.type === "teach" &&
         loggedInUserSkill.embedding
       ) {
-        try {
-          // Parse embedding if it's a JSON string, otherwise use as-is
-          const embedding =
-            typeof loggedInUserSkill.embedding === "string"
-              ? JSON.parse(loggedInUserSkill.embedding)
-              : loggedInUserSkill.embedding;
+        // Parse embedding if it's a JSON string, otherwise use as-is
+        const embedding =
+          typeof loggedInUserSkill.embedding === "string"
+            ? JSON.parse(loggedInUserSkill.embedding)
+            : loggedInUserSkill.embedding;
 
-          if (Array.isArray(embedding)) {
-            loggedInUserTeachSkills.push(embedding);
-          }
-        } catch (error) {}
+        // Handle both array and object formats
+        if (Array.isArray(embedding)) {
+          loggedInUserTeachSkills.push(embedding);
+        } else if (typeof embedding === "object" && embedding !== null) {
+          const keys = Object.keys(embedding).sort(
+            (a, b) => Number(a) - Number(b)
+          );
+          const embeddingArray = keys.map((key) => embedding[key]);
+          loggedInUserTeachSkills.push(embeddingArray);
+        }
       }
     });
 
@@ -96,7 +105,6 @@ export default function MemberCard({
     user2Data?.forEach((user2Skill) => {
       if (user2Skill.type === "learn" && user2Skill.embedding) {
         try {
-          // Parse embedding if it's a JSON string, otherwise use as-is
           const embedding =
             typeof user2Skill.embedding === "string"
               ? JSON.parse(user2Skill.embedding)
@@ -104,11 +112,21 @@ export default function MemberCard({
 
           if (Array.isArray(embedding)) {
             secondaryUserLearnSkills.push(embedding);
+          } else if (typeof embedding === "object" && embedding !== null) {
+            const keys = Object.keys(embedding).sort(
+              (a, b) => Number(a) - Number(b)
+            );
+            const embeddingArray = keys.map((key) => embedding[key]);
+            secondaryUserLearnSkills.push(embeddingArray);
           }
         } catch (error) {}
       } else if (user2Skill.type === "teach" && user2Skill.embedding) {
         try {
-          // Parse embedding if it's a JSON string, otherwise use as-is
+          console.log(
+            "secondaryUserTeachSkills",
+            secondaryUserTeachSkills,
+            user2Skill.embedding
+          );
           const embedding =
             typeof user2Skill.embedding === "string"
               ? JSON.parse(user2Skill.embedding)
@@ -116,19 +134,23 @@ export default function MemberCard({
 
           if (Array.isArray(embedding)) {
             secondaryUserTeachSkills.push(embedding);
+          } else if (typeof embedding === "object" && embedding !== null) {
+            const keys = Object.keys(embedding).sort(
+              (a, b) => Number(a) - Number(b)
+            );
+            const embeddingArray = keys.map((key) => embedding[key]);
+            secondaryUserTeachSkills.push(embeddingArray);
           }
         } catch (error) {}
       }
     });
 
-    // Calculate learning match score: logged-in user's learn skills vs other user's teach skills
     for (let i = 0; i < loggedInUserLearnSkills.length; i++) {
       const loggedInLearnEmbedding = loggedInUserLearnSkills[i];
 
       for (let j = 0; j < secondaryUserTeachSkills.length; j++) {
         const otherUserTeachEmbedding = secondaryUserTeachSkills[j];
 
-        // Calculate cosine similarity between embeddings
         const similarity = cosineSimilarity(
           loggedInLearnEmbedding,
           otherUserTeachEmbedding
@@ -141,20 +163,17 @@ export default function MemberCard({
       }
     }
 
-    // Calculate teaching match score: logged-in user's teach skills vs other user's learn skills
     for (let i = 0; i < loggedInUserTeachSkills.length; i++) {
-      const loggedInTeachEmbedding = loggedInUserTeachSkills[i];
-
       for (let j = 0; j < secondaryUserLearnSkills.length; j++) {
         const otherUserLearnEmbedding = secondaryUserLearnSkills[j];
+        const loggedInTeachEmbedding = loggedInUserTeachSkills[i];
+        console.log("max_teach_score", loggedInTeachEmbedding);
 
-        // Calculate cosine similarity between embeddings
         const similarity = cosineSimilarity(
           loggedInTeachEmbedding,
           otherUserLearnEmbedding
         );
 
-        // Update max teaching score if this similarity is higher
         if (similarity > max_teach_score) {
           max_teach_score = similarity;
         }

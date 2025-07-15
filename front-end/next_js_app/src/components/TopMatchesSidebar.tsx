@@ -49,8 +49,17 @@ export default function TopMatchesSidebar() {
             typeof skill.embedding === "string"
               ? JSON.parse(skill.embedding)
               : skill.embedding;
+
+          // Handle both array and object formats
           if (Array.isArray(embedding)) {
             loggedInUserLearnSkills.push(embedding);
+          } else if (typeof embedding === "object" && embedding !== null) {
+            // Convert object format {0: 102, 1: 111, ...} to array [102, 111, ...]
+            const keys = Object.keys(embedding).sort(
+              (a, b) => Number(a) - Number(b)
+            );
+            const embeddingArray = keys.map((key) => embedding[key]);
+            loggedInUserLearnSkills.push(embeddingArray);
           }
         } catch (error) {}
       } else if (skill.type === "teach" && skill.embedding) {
@@ -59,8 +68,17 @@ export default function TopMatchesSidebar() {
             typeof skill.embedding === "string"
               ? JSON.parse(skill.embedding)
               : skill.embedding;
+
+          // Handle both array and object formats
           if (Array.isArray(embedding)) {
             loggedInUserTeachSkills.push(embedding);
+          } else if (typeof embedding === "object" && embedding !== null) {
+            // Convert object format {0: 102, 1: 111, ...} to array [102, 111, ...]
+            const keys = Object.keys(embedding).sort(
+              (a, b) => Number(a) - Number(b)
+            );
+            const embeddingArray = keys.map((key) => embedding[key]);
+            loggedInUserTeachSkills.push(embeddingArray);
           }
         } catch (error) {}
       }
@@ -81,8 +99,17 @@ export default function TopMatchesSidebar() {
             typeof skill.embedding === "string"
               ? JSON.parse(skill.embedding)
               : skill.embedding;
+
+          // Handle both array and object formats
           if (Array.isArray(embedding)) {
             targetUserLearnSkills.push(embedding);
+          } else if (typeof embedding === "object" && embedding !== null) {
+            // Convert object format {0: 102, 1: 111, ...} to array [102, 111, ...]
+            const keys = Object.keys(embedding).sort(
+              (a, b) => Number(a) - Number(b)
+            );
+            const embeddingArray = keys.map((key) => embedding[key]);
+            targetUserLearnSkills.push(embeddingArray);
           }
         } catch (error) {}
       } else if (skill.type === "teach" && skill.embedding) {
@@ -91,8 +118,17 @@ export default function TopMatchesSidebar() {
             typeof skill.embedding === "string"
               ? JSON.parse(skill.embedding)
               : skill.embedding;
+
+          // Handle both array and object formats
           if (Array.isArray(embedding)) {
             targetUserTeachSkills.push(embedding);
+          } else if (typeof embedding === "object" && embedding !== null) {
+            // Convert object format {0: 102, 1: 111, ...} to array [102, 111, ...]
+            const keys = Object.keys(embedding).sort(
+              (a, b) => Number(a) - Number(b)
+            );
+            const embeddingArray = keys.map((key) => embedding[key]);
+            targetUserTeachSkills.push(embeddingArray);
           }
         } catch (error) {}
       }

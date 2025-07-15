@@ -22,6 +22,8 @@ const extractSkillNames = (skills: any[]): string[] => {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [teachingSkillsData, setTeachingSkillsData] = useState<any[]>([]);
+  const [learningSkillsData, setLearningSkillsData] = useState<any[]>([]);
   const router = useRouter();
   const supabase = createClient();
 
@@ -39,34 +41,56 @@ export default function ProfilePage() {
       const profileId = searchParams.get("id");
       const targetUserId = profileId || user.id;
       const isOwnProfile = !profileId || profileId === user.id;
+      const { data: skillsData, error: skillsError } = await supabase
+        .from("user_skills")
+        .select("skill, type")
+        .eq("user_id", targetUserId);
 
-      const { data: queriedData, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", targetUserId)
-        .single();
+      console.log(skillsData, skillsError);
 
-      if (queriedData && !error) {
-        setProfile({
-          email: isOwnProfile
-            ? user.email || queriedData.email || ""
-            : queriedData.email || "",
-          displayName:
-            queriedData.display_name ||
-            (isOwnProfile ? user.user_metadata?.user_name : "") ||
-            "User",
-          profilePicture:
-            queriedData.profile_pic_url ||
-            (isOwnProfile ? user.user_metadata?.avatar_url : undefined),
-          teachingSkills: extractSkillNames(queriedData.teaching_skills || []),
-          learningSkills: extractSkillNames(queriedData.learning_skills || []),
-        });
+      if (skillsData && !skillsError) {
+        setTeachingSkillsData(
+          skillsData
+            .filter((skill: any) => skill.type === "teach")
+            .map((skill: any) => skill.skill)
+        );
+
+        setLearningSkillsData(
+          skillsData
+            .filter((skill: any) => skill.type === "learn")
+            .map((skill: any) => skill.skill)
+        );
+        const { data: queriedData, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", targetUserId)
+          .single();
+
+        if (queriedData && !error) {
+          setProfile({
+            email: isOwnProfile
+              ? user.email || queriedData.email || ""
+              : queriedData.email || "",
+            displayName:
+              queriedData.display_name ||
+              (isOwnProfile ? user.user_metadata?.user_name : "") ||
+              "User",
+            profilePicture:
+              queriedData.profile_pic_url ||
+              (isOwnProfile ? user.user_metadata?.avatar_url : undefined),
+            teachingSkills: teachingSkillsData || [],
+            learningSkills: learningSkillsData || [],
+          });
+        }
       }
     };
 
     fetchUserProfile();
   }, []);
 
+  useEffect(() => {
+    console.log(teachingSkillsData, learningSkillsData);
+  }, [teachingSkillsData, learningSkillsData]);
   if (!profile) {
     return <LoadingState />;
   }
