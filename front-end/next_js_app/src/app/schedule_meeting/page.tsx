@@ -112,7 +112,32 @@ export default function ScheduleMeetingPage() {
 
   // Handle slot selection
   const handleSelectSlot = (slotInfo: any) => {
-    setSelectedSlot(slotInfo);
+    // Enforce exactly one hour duration
+    const start = new Date(slotInfo.start);
+    const end = new Date(start);
+    end.setHours(start.getHours() + 1);
+
+    // Create a new slot with exactly one hour duration
+    const oneHourSlot = {
+      ...slotInfo,
+      start,
+      end,
+    };
+
+    setSelectedSlot(oneHourSlot);
+    setIsModalOpen(true);
+  };
+
+  // Handle event click (when user clicks on an available slot)
+  const handleSelectEvent = (event: any) => {
+    // Use the event's start and end time
+    const oneHourSlot = {
+      start: event.start,
+      end: event.end,
+      action: "click",
+    };
+
+    setSelectedSlot(oneHourSlot);
     setIsModalOpen(true);
   };
 
@@ -121,7 +146,7 @@ export default function ScheduleMeetingPage() {
     if (!loggedInUser || !targetUser || !selectedSlot) return;
 
     try {
-      // Create meeting 
+      // Create meeting
       const meeting = {
         organizer_id: loggedInUser.id,
         attendee_id: targetUser.id,
@@ -181,6 +206,7 @@ export default function ScheduleMeetingPage() {
             endAccessor="end"
             selectable
             onSelectSlot={handleSelectSlot}
+            onSelectEvent={handleSelectEvent}
             step={60}
             timeslots={1}
             defaultView="week"
@@ -188,6 +214,12 @@ export default function ScheduleMeetingPage() {
             min={new Date(0, 0, 0, 9, 0)} // 9am
             max={new Date(0, 0, 0, 17, 0)} // 5pm
             className="rounded-md"
+            eventPropGetter={() => ({
+              style: {
+                backgroundColor: "#4CAF50",
+                cursor: "pointer",
+              },
+            })}
           />
         </div>
       </div>
