@@ -387,6 +387,12 @@ export default function MemberCard({
           >
             View Profile
           </button>
+          <button
+            onClick={() => router.push(`/schedule_meeting?userId=${member.id}`)}
+            className="w-full px-4 py-2 bg-green-100 text-green-700 text-sm font-medium rounded-md hover:bg-green-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+          >
+            Schedule Meeting
+          </button>
         </div>
       </div>
     </div>

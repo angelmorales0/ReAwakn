@@ -1,10 +1,16 @@
 import { UserProfile } from "@/types/user";
+import { useRouter } from "next/navigation";
 
 interface ProfileHeaderProps {
   profile: UserProfile;
+  isOwnProfile?: boolean;
 }
 
-export default function ProfileHeader({ profile }: ProfileHeaderProps) {
+export default function ProfileHeader({
+  profile,
+  isOwnProfile = false,
+}: ProfileHeaderProps) {
+  const router = useRouter();
   return (
     <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-8 py-12">
       <div className="flex flex-col items-center text-center">
@@ -36,7 +42,18 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
           {profile.displayName}
         </h2>
 
-        <p className="text-blue-100 text-lg">{profile.email}</p>
+        <p className="text-blue-100 text-lg mb-4">{profile.email}</p>
+
+        {!isOwnProfile && (
+          <button
+            onClick={() =>
+              router.push(`/schedule_meeting?userId=${profile.id}`)
+            }
+            className="px-6 py-2 bg-white text-purple-600 font-medium rounded-full hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-600"
+          >
+            Schedule Meeting
+          </button>
+        )}
       </div>
     </div>
   );

@@ -8,22 +8,11 @@ import ProfileHeader from "./components/ProfileHeader";
 import ProfileContent from "./components/ProfileContent";
 import LoadingState from "./components/LoadingState";
 
-const extractSkillNames = (skills: any[]): string[] => {
-  if (!skills || !Array.isArray(skills)) return [];
-
-  if (skills.length > 0 && typeof skills[0] === "object" && skills[0].skill) {
-    return skills.map(
-      (skillObj: any) => `${skillObj.skill}: ${skillObj.level}`
-    );
-  }
-
-  return skills.filter((skill: any) => typeof skill === "string");
-};
-
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [teachingSkillsData, setTeachingSkillsData] = useState<any[]>([]);
   const [learningSkillsData, setLearningSkillsData] = useState<any[]>([]);
+  const [isOwnProfile, setIsOwnProfile] = useState<boolean>(true);
   const router = useRouter();
   const supabase = createClient();
 
@@ -40,7 +29,8 @@ export default function ProfilePage() {
       const searchParams = new URLSearchParams(window.location.search);
       const profileId = searchParams.get("id");
       const targetUserId = profileId || user.id;
-      const isOwnProfile = !profileId || profileId === user.id;
+      const isCurrentUserProfile = !profileId || profileId === user.id;
+      setIsOwnProfile(isCurrentUserProfile);
       const { data: skillsData, error: skillsError } = await supabase
         .from("user_skills")
         .select("skill, type")
@@ -68,16 +58,19 @@ export default function ProfilePage() {
 
         if (queriedData && !error) {
           setProfile({
-            email: isOwnProfile
+            email: isCurrentUserProfile
               ? user.email || queriedData.email || ""
               : queriedData.email || "",
             displayName:
               queriedData.display_name ||
-              (isOwnProfile ? user.user_metadata?.user_name : "") ||
+              (isCurrentUserProfile ? user.user_metadata?.user_name : "") ||
               "User",
             profilePicture:
               queriedData.profile_pic_url ||
-              (isOwnProfile ? user.user_metadata?.avatar_url : undefined),
+              (isCurrentUserProfile
+                ? user.user_metadata?.avatar_url
+                : undefined),
+            id: targetUserId,
             teachingSkills: teachingSkillsData || [],
             learningSkills: learningSkillsData || [],
           });
@@ -97,7 +90,7 @@ export default function ProfilePage() {
 
   return (
     <ProfileLayout>
-      <ProfileHeader profile={profile} />
+      <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} />
       <ProfileContent profile={profile} />
     </ProfileLayout>
   );
