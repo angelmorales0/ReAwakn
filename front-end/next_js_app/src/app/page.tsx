@@ -8,7 +8,7 @@ import SocialWall from "./social_wall/page";
 export default function Home() {
   const router = useRouter();
 
-  const getSession = async () => {
+  const checkAuthAndOnboarding = async () => {
     const {
       data: { session },
     } = await supabase().auth.getSession();
@@ -17,10 +17,32 @@ export default function Home() {
       router.push("/login");
       return;
     }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase().auth.getUser();
+
+    if (user && !authError) {
+      // Check if user has completed onboarding
+      const { data: userData, error: dbError } = await supabase()
+        .from("users")
+        .select("completed_onboarding")
+        .eq("id", user.id)
+        .single();
+
+      const hasCompletedOnboarding = userData?.completed_onboarding === true;
+
+      // Determine redirect URL
+      if (!hasCompletedOnboarding) {
+        router.push("/new_user");
+        return;
+      }
+    }
   };
 
   useEffect(() => {
-    getSession();
+    checkAuthAndOnboarding();
   }, []);
 
   return (

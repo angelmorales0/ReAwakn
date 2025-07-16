@@ -34,7 +34,7 @@ export default function PostCard({ post, formatDate }: PostProps) {
   const handleSubmitComment = async () => {
     //make a supabase insert on comments table
     const user = await getUser();
-    const { data, error } = await supabase.from("post_comments").insert([
+    const { data, error } = await supabase.from("post_comments").upsert([
       {
         post_id: post.id,
         author_id: user?.id,

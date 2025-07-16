@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login, signInWithGithub } from "@/lib/auth-actions";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import supabase from "@/app/utils/supabase/client";
 
 export function LoginForm({
@@ -18,6 +18,16 @@ export function LoginForm({
     email: "",
     password: "",
   });
+
+  const userHasCompletedOnboarding = async () => {
+    const { data, error } = await supabaseClient
+      .from("users")
+      .select("completed_onboarding")
+      .eq("email", logInData.email);
+    const isCompleted = data?.[0]?.completed_onboarding;
+    return isCompleted;
+  };
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -27,8 +37,10 @@ export function LoginForm({
 
     if (error) {
       alert(error.message);
-    } else {
+    } else if (await userHasCompletedOnboarding()) {
       router.push("/");
+    } else {
+      router.push("/new_user");
     }
   };
 

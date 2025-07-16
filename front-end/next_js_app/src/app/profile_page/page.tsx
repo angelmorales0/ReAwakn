@@ -8,6 +8,18 @@ import ProfileHeader from "./components/ProfileHeader";
 import ProfileContent from "./components/ProfileContent";
 import LoadingState from "./components/LoadingState";
 
+const extractSkillNames = (skills: any[]): string[] => {
+  if (!skills || !Array.isArray(skills)) return [];
+
+  if (skills.length > 0 && typeof skills[0] === "object" && skills[0].skill) {
+    return skills.map(
+      (skillObj: any) => `${skillObj.skill}: ${skillObj.level}`
+    );
+  }
+
+  return skills.filter((skill: any) => typeof skill === "string");
+};
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const router = useRouter();
@@ -46,8 +58,8 @@ export default function ProfilePage() {
           profilePicture:
             queriedData.profile_pic_url ||
             (isOwnProfile ? user.user_metadata?.avatar_url : undefined),
-          teachingSkills: queriedData.teaching_skills || [],
-          learningSkills: queriedData.learning_skills || [],
+          teachingSkills: extractSkillNames(queriedData.teaching_skills || []),
+          learningSkills: extractSkillNames(queriedData.learning_skills || []),
         });
       }
     };
