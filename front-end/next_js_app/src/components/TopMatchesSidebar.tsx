@@ -13,7 +13,6 @@ interface MatchUser {
 
 export default function TopMatchesSidebar() {
   const [topMatches, setTopMatches] = useState<MatchUser[]>([]);
-  const [loggedInUser, setLoggedInUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
   const router = useRouter();
@@ -61,7 +60,9 @@ export default function TopMatchesSidebar() {
             const embeddingArray = keys.map((key) => embedding[key]);
             loggedInUserLearnSkills.push(embeddingArray);
           }
-        } catch (error) {}
+        } catch (error) {
+          alert(error);
+        }
       } else if (skill.type === "teach" && skill.embedding) {
         try {
           const embedding =
@@ -80,7 +81,9 @@ export default function TopMatchesSidebar() {
             const embeddingArray = keys.map((key) => embedding[key]);
             loggedInUserTeachSkills.push(embeddingArray);
           }
-        } catch (error) {}
+        } catch (error) {
+          alert(error);
+        }
       }
     });
 
@@ -111,7 +114,9 @@ export default function TopMatchesSidebar() {
             const embeddingArray = keys.map((key) => embedding[key]);
             targetUserLearnSkills.push(embeddingArray);
           }
-        } catch (error) {}
+        } catch (error) {
+          alert(error);
+        }
       } else if (skill.type === "teach" && skill.embedding) {
         try {
           const embedding =
@@ -130,7 +135,9 @@ export default function TopMatchesSidebar() {
             const embeddingArray = keys.map((key) => embedding[key]);
             targetUserTeachSkills.push(embeddingArray);
           }
-        } catch (error) {}
+        } catch (error) {
+          alert(error);
+        }
       }
     });
 
@@ -179,7 +186,6 @@ export default function TopMatchesSidebar() {
           .single();
 
         if (!userData) return;
-        setLoggedInUser(userData);
 
         // Get all other users who completed onboarding
         const { data: allUsers } = await supabase
@@ -230,7 +236,7 @@ export default function TopMatchesSidebar() {
 
         setTopMatches(sortedMatches);
       } catch (error) {
-        console.error("Error fetching top matches:", error);
+        alert(error);
       } finally {
         setLoading(false);
       }
@@ -240,7 +246,11 @@ export default function TopMatchesSidebar() {
   }, []);
 
   const viewProfile = (userId: string) => {
-    router.push(`/profile_page?id=${userId}`);
+    try {
+      router.push(`/profile_page?id=${userId}`);
+    } catch (error) {
+      alert(error);
+    }
   };
 
   if (loading) {

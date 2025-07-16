@@ -12,11 +12,32 @@ interface MemberWithSimilarity extends Member {
   maxLearnScore?: number;
   maxTeachScore?: number;
 }
+interface LoggedInUser {
+  id: string;
+  email?: string;
+  displayName?: string;
+  profilePicUrl?: string;
+  completedOnboarding?: boolean;
+  teachingSkills: string[];
+  learningSkills: string[];
+  communicationStyle?: string;
+  timeZone?: string;
+  chronotype?: string;
+  availability: string[];
+  // These are used in hasSimilarSkills function
+  learning_embeddings?: number[][];
+  teaching_embeddings?: number[][];
+}
+
+interface UserWithEmbeddings {
+  learning_embeddings?: number[][];
+  teaching_embeddings?: number[][];
+}
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [members, setMembers] = useState<MemberWithSimilarity[]>([]);
-  const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const [loggedInUser, setLoggedInUser] = useState<LoggedInUser | null>(null);
   const [similarityScores, setSimilarityScores] = useState<Map<string, number>>(
     new Map()
   );
@@ -79,7 +100,14 @@ export default function SearchPage() {
     try {
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
+
+      if (authError) {
+        alert(authError);
+        return;
+      }
+
       if (user) {
         const { data: userData, error } = await supabase
           .from("users")
@@ -87,7 +115,12 @@ export default function SearchPage() {
           .eq("id", user.id)
           .single();
 
-        if (!error && userData) {
+        if (error) {
+          alert(error);
+          return;
+        }
+
+        if (userData) {
           const formattedUser = {
             id: userData.id,
             email: userData.email,
@@ -104,7 +137,9 @@ export default function SearchPage() {
           setLoggedInUser(formattedUser);
         }
       }
-    } catch (error) {}
+    } catch (error) {
+      alert(error);
+    }
   };
   /// VIABLE / NON VIABLE MATCH LOGIC FOR MATCH (NOT SEARCH) PAGE
 
@@ -115,7 +150,10 @@ export default function SearchPage() {
     return dotProduct / (magnitudeA * magnitudeB);
   }
 
-  function hasSimilarSkills(userA: any, userB: any) {
+  function hasSimilarSkills(
+    userA: UserWithEmbeddings,
+    userB: UserWithEmbeddings
+  ) {
     // FROM USER A'S PERSPECTIVE = LOGGED IN
     let max_learn_score = 0;
     let max_teach_score = 0;
@@ -159,11 +197,16 @@ export default function SearchPage() {
     for (const member of membersToCalculate) {
       try {
         // Get member's full data with embeddings
-        const { data: memberData } = await supabase
+        const { data: memberData, error: memberError } = await supabase
           .from("users")
           .select("*")
           .eq("id", member.id)
           .single();
+
+        if (memberError) {
+          alert(`Error fetching member data: ${memberError.message}`);
+          continue;
+        }
 
         // Calculate learning/teaching scores
         if (loggedInUserData && memberData) {
@@ -187,25 +230,38 @@ export default function SearchPage() {
           }
         }
 
-        const response = await fetch("/api/similarity", {
-          //ORIGINAL REQ TO SIMILARITY SERVICE
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            loggedInUserId: loggedInUser.id,
-            targetUserId: member.id,
-            action: "similarity",
-          }),
-        });
+        try {
+          const response = await fetch("/api/similarity", {
+            //ORIGINAL REQ TO SIMILARITY SERVICE
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              loggedInUserId: loggedInUser.id,
+              targetUserId: member.id,
+              action: "similarity",
+            }),
+          });
 
-        const data = await response.json();
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.status} - ${errorText}`);
+          }
 
-        if (response.ok && data.similarity !== undefined) {
-          newScores.set(member.id, data.similarity);
+          const data = await response.json();
+
+          if (data.similarity !== undefined) {
+            newScores.set(member.id, data.similarity);
+          } else if (data.error) {
+            throw new Error(`API returned error: ${data.error}`);
+          }
+        } catch (fetchError) {
+          alert(`Error calculating similarity: ${fetchError}`);
+          newScores.set(member.id, 0);
         }
       } catch (error) {
+        alert(`Error processing member: ${error}`);
         newScores.set(member.id, 0);
       }
     }
@@ -286,7 +342,11 @@ export default function SearchPage() {
           members={sortedMembers}
           loggedInUserId={loggedInUser?.id || ""}
           showSimilarityScores={true}
-          loggedInUser={loggedInUser}
+          loggedInUser={
+            loggedInUser
+              ? { ...loggedInUser, name: loggedInUser.displayName || "" }
+              : undefined
+          }
         />
       </div>
     </div>

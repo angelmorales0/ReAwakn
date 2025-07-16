@@ -44,6 +44,26 @@ const calendarStyles = `
     overflow: visible !important;
   }
 `;
+interface User {
+  id: string;
+  display_name?: string;
+  name?: string;
+  email?: string;
+  time_zone?: string;
+  availability?: string;
+}
+
+interface CalendarEvent {
+  start: Date;
+  end: Date;
+  startUTC?: string;
+  endUTC?: string;
+  displayStartHour?: number;
+  displayEndHour?: number;
+  displayTime?: string;
+  resource?: { available: boolean };
+  action?: string;
+}
 
 const localizer = momentLocalizer(moment);
 
@@ -53,10 +73,12 @@ export default function ScheduleMeetingPage() {
   const searchParams = useSearchParams();
   const targetUserId = searchParams.get("userId");
   const supabase = createClient();
-  const [loggedInUser, setLoggedInUser] = useState<any>(null);
-  const [targetUser, setTargetUser] = useState<any>(null);
-  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+  const [targetUser, setTargetUser] = useState<User | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<CalendarEvent[] | null>(
+    []
+  );
+  const [selectedSlot, setSelectedSlot] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -65,7 +87,7 @@ export default function ScheduleMeetingPage() {
     styleElement.innerHTML = calendarStyles;
     document.head.appendChild(styleElement);
 
-    const userTimezone = loggedInUser?.time_zone;
+    const userTimezone = loggedInUser?.time_zone || "";
 
     const ianaTimezone = getIANATimezone(userTimezone);
     setUserTimeZone(ianaTimezone);
@@ -299,7 +321,7 @@ export default function ScheduleMeetingPage() {
     return events;
   };
 
-  const handleSelectSlot = (slotInfo: any) => {
+  const handleSelectSlot = (slotInfo: { start: Date }) => {
     const start = new Date(slotInfo.start);
     const end = new Date(start);
     end.setHours(start.getHours() + 1);
@@ -313,7 +335,12 @@ export default function ScheduleMeetingPage() {
     setIsModalOpen(true);
   };
 
-  const handleSelectEvent = (event: any) => {
+  const handleSelectEvent = (event: {
+    start: Date;
+    end: Date;
+    startUTC: string;
+    endUTC: string;
+  }) => {
     const oneHourSlot = {
       start: event.start,
       end: event.end,
@@ -327,7 +354,7 @@ export default function ScheduleMeetingPage() {
   };
 
   //Future Implementation
-  const handleBookMeeting = async (meetingDetails: any) => {
+  const handleBookMeeting = async () => {
     //1. Need to check if time slot has any conflicts on other users end,
     // if no conflicts add
     //if yes conflicts dont add
@@ -344,7 +371,7 @@ export default function ScheduleMeetingPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-4">
-        Schedule a Meeting with {targetUser.name || targetUser.display_name}
+        Schedule a Meeting with {targetUser?.name || targetUser?.display_name}
       </h1>
 
       <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 flex items-center">
@@ -381,10 +408,14 @@ export default function ScheduleMeetingPage() {
             </span>
           </div>
           <div className="h-[700px] overflow-y-auto" id="calendar-container">
-            {availableSlots.length > 0 ? (
+            {availableSlots && availableSlots.length > 0 ? (
               <Calendar
                 localizer={localizer}
-                events={availableSlots}
+                events={availableSlots.map(slot => ({
+                  ...slot,
+                  startUTC: slot.startUTC || "",
+                  endUTC: slot.endUTC || ""
+                }))}
                 startAccessor="start"
                 endAccessor="end"
                 selectable
@@ -437,7 +468,7 @@ export default function ScheduleMeetingPage() {
         </div>
       </div>
 
-      {isModalOpen && selectedSlot && (
+      {isModalOpen && selectedSlot && targetUser && (
         <MeetingConfirmationModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}

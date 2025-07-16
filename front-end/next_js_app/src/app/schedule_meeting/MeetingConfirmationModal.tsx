@@ -44,7 +44,6 @@ export default function MeetingConfirmationModal({
       });
       onClose();
     } catch (error) {
-      console.error("Error confirming meeting:", error);
     } finally {
       setIsSubmitting(false);
     }

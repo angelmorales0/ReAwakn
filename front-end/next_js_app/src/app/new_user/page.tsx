@@ -111,17 +111,14 @@ export default function NewUserQuestionnaire() {
   };
 
   const getEmbedding = async (skill: string) => {
-    // Convert string to bytes array using TextEncoder
     const encoder = new TextEncoder();
     const bytes = encoder.encode(skill.toLowerCase());
 
-    // Convert Uint8Array to a JSONB-compatible object
     const jsonbEmbedding: Record<string, number> = {};
     for (let i = 0; i < bytes.length; i++) {
       jsonbEmbedding[i.toString()] = bytes[i];
     }
 
-    console.log(jsonbEmbedding);
     return jsonbEmbedding;
   };
 

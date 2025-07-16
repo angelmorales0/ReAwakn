@@ -2,7 +2,6 @@ import { useRouter } from "next/navigation";
 import { Member } from "@/types/member";
 import createClient from "@/app/utils/supabase/client";
 import { useState, useEffect } from "react";
-
 interface MemberWithSimilarity extends Member {
   similarityScore?: number;
   similarityLoading?: boolean;
@@ -12,7 +11,7 @@ interface MemberCardProps {
   member: MemberWithSimilarity;
   loggedInUserId?: string;
   showSimilarityScore?: boolean;
-  loggedInUser?: any;
+  loggedInUser?: Member;
 }
 
 export default function MemberCard({
@@ -41,11 +40,11 @@ export default function MemberCard({
     return dotProduct / (magnitudeA * magnitudeB);
   }
 
-  async function hasSimilarSkills(loggedInUserId: any, user2ID: any) {
+  async function hasSimilarSkills(loggedInUserId: string, user2ID: string) {
     let max_learn_score = 0;
     let max_teach_score = 0;
 
-    const { data: loggedInUserData, error: dbError } = await supabase
+    const { data: loggedInUserData } = await supabase
       .from("user_skills")
       .select("skill, type, embedding")
       .eq("user_id", loggedInUserId);
@@ -70,7 +69,9 @@ export default function MemberCard({
             const embeddingArray = keys.map((key) => embedding[key]);
             loggedInUserLearnSkills.push(embeddingArray);
           }
-        } catch (error) {}
+        } catch (error) {
+          alert(error);
+        }
       } else if (
         loggedInUserSkill.type === "teach" &&
         loggedInUserSkill.embedding
@@ -94,7 +95,7 @@ export default function MemberCard({
       }
     });
 
-    const { data: user2Data, error: db2Error } = await supabase
+    const { data: user2Data } = await supabase
       .from("user_skills")
       .select("skill, type, embedding")
       .eq("user_id", user2ID);
@@ -119,14 +120,11 @@ export default function MemberCard({
             const embeddingArray = keys.map((key) => embedding[key]);
             secondaryUserLearnSkills.push(embeddingArray);
           }
-        } catch (error) {}
+        } catch (error) {
+          alert(error);
+        }
       } else if (user2Skill.type === "teach" && user2Skill.embedding) {
         try {
-          console.log(
-            "secondaryUserTeachSkills",
-            secondaryUserTeachSkills,
-            user2Skill.embedding
-          );
           const embedding =
             typeof user2Skill.embedding === "string"
               ? JSON.parse(user2Skill.embedding)
@@ -141,7 +139,9 @@ export default function MemberCard({
             const embeddingArray = keys.map((key) => embedding[key]);
             secondaryUserTeachSkills.push(embeddingArray);
           }
-        } catch (error) {}
+        } catch (error) {
+          alert(error);
+        }
       }
     });
 
@@ -167,13 +167,10 @@ export default function MemberCard({
       for (let j = 0; j < secondaryUserLearnSkills.length; j++) {
         const otherUserLearnEmbedding = secondaryUserLearnSkills[j];
         const loggedInTeachEmbedding = loggedInUserTeachSkills[i];
-        console.log("max_teach_score", loggedInTeachEmbedding);
-
         const similarity = cosineSimilarity(
           loggedInTeachEmbedding,
           otherUserLearnEmbedding
         );
-
         if (similarity > max_teach_score) {
           max_teach_score = similarity;
         }
@@ -184,27 +181,50 @@ export default function MemberCard({
   }
 
   const checkFriends = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-    const { data: isMutualFriends, error } = await supabase.rpc("are_friends", {
-      owner_id: user?.id,
-      friend_id: member.id,
-    });
+      if (authError) {
+        alert(authError);
+        return;
+      }
 
-    setIsFriends(isMutualFriends);
+      const { data: isMutualFriends, error: rpcError } = await supabase.rpc(
+        "are_friends",
+        {
+          owner_id: user?.id,
+          friend_id: member.id,
+        }
+      );
 
-    const { data } = await supabase
-      .from("friends")
-      .select("*")
-      .eq("owner", user?.id)
-      .eq("friend", member.id);
+      if (rpcError) {
+        alert(rpcError);
+        return;
+      }
 
-    if ((!isFriends && data && data.length > 0) || user?.id == member.id) {
-      setIsDisabled(true);
-    } else {
-      setIsDisabled(false);
+      setIsFriends(isMutualFriends);
+
+      const { data, error: queryError } = await supabase
+        .from("friends")
+        .select("*")
+        .eq("owner", user?.id)
+        .eq("friend", member.id);
+
+      if (queryError) {
+        alert(queryError);
+        return;
+      }
+
+      if ((!isFriends && data && data.length > 0) || user?.id == member.id) {
+        setIsDisabled(true);
+      } else {
+        setIsDisabled(false);
+      }
+    } catch (error) {
+      alert(error);
     }
   };
 
@@ -234,20 +254,44 @@ export default function MemberCard({
           setMaxLearnScore(max_learn_score);
           setMaxTeachScore(max_teach_score);
         }
-      } catch (error) {}
+      } catch (error) {
+        alert(error);
+      }
     };
 
     calculateLearningTeachingScores();
   }, [loggedInUser, member.id]);
 
   const handleConnect = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    await supabase
-      .from("friends")
-      .insert({ owner: user?.id, friend: member.id });
-    checkFriends();
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        alert(authError);
+        return;
+      }
+
+      if (!user?.id) {
+        alert("User not authenticated");
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from("friends")
+        .insert({ owner: user.id, friend: member.id });
+
+      if (insertError) {
+        alert(insertError);
+        return;
+      }
+
+      checkFriends();
+    } catch (error) {
+      alert(error);
+    }
   };
 
   const viewProfile = (id: string) => {
@@ -255,28 +299,57 @@ export default function MemberCard({
   };
 
   const handleDM = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data, error } = await supabase
-      .from("dm_conversations")
-      .select("*")
-      .or(
-        `and(user1_id.eq.${user?.id},user2_id.eq.${member.id}),and(user1_id.eq.${member.id},user2_id.eq.${user?.id})`
-        //THIS SELECTS THE CONVO ID IF THE PAIRING EXISTS REGARDLESS OF ORDERING
-      )
-      .limit(1);
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-    const convo = data?.[0];
+      if (authError) {
+        alert(authError);
+        return;
+      }
 
-    if (!convo) {
-      //if convo doesn't exist, create it
-      const { data, error } = await supabase
+      if (!user?.id) {
+        alert("User not authenticated");
+        return;
+      }
+
+      const { data, error: queryError } = await supabase
         .from("dm_conversations")
-        .insert({ user1_id: user?.id, user2_id: member.id });
-    }
+        .select("*")
+        .or(
+          `and(user1_id.eq.${user.id},user2_id.eq.${member.id}),and(user1_id.eq.${member.id},user2_id.eq.${user.id})`
+          //THIS SELECTS THE CONVO ID IF THE PAIRING EXISTS REGARDLESS OF ORDERING
+        )
+        .limit(1);
 
-    router.push(`/dm_page?id=${convo?.id}&user=${member.name}`);
+      if (queryError) {
+        alert(queryError);
+        return;
+      }
+
+      let convoId = data?.[0]?.id;
+
+      if (!data || data.length === 0) {
+        //if convo doesn't exist, create it
+        const { data: newConvo, error: insertError } = await supabase
+          .from("dm_conversations")
+          .insert({ user1_id: user.id, user2_id: member.id })
+          .select();
+
+        if (insertError) {
+          alert(insertError);
+          return;
+        }
+
+        convoId = newConvo?.[0]?.id;
+      }
+
+      router.push(`/dm_page?id=${convoId}&user=${member.name}`);
+    } catch (error) {
+      alert(error);
+    }
   };
 
   const getSimilarityColor = (score: number) => {

@@ -21,48 +21,106 @@ interface PostProps {
 export default function PostCard({ post, formatDate }: PostProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const [commentList, setCommentList] = useState<any>([]);
+  const [commentList, setCommentList] = useState<
+    Array<{ author_name: string | null; post_content: string }>
+  >([]);
   const supabase = createClient();
   const [isAlreadyLiked, setIsAlreadyLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const getUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    return user;
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) {
+        alert(error);
+        return null;
+      }
+
+      return user;
+    } catch (error) {
+      alert(error);
+      return null;
+    }
   };
   const handleSubmitComment = async () => {
-    //make a supabase insert on comments table
-    const user = await getUser();
-    const { data, error } = await supabase.from("post_comments").upsert([
-      {
-        post_id: post.id,
-        author_id: user?.id,
-        post_content: commentText,
-        author_name: user?.user_metadata.user_name,
-      },
-    ]);
-    setIsModalOpen(false);
+    try {
+      //make a supabase insert on comments table
+      const user = await getUser();
+
+      if (!user) {
+        alert("You must be logged in to comment");
+        return;
+      }
+
+      const { error } = await supabase.from("post_comments").upsert([
+        {
+          post_id: post.id,
+          author_id: user.id,
+          post_content: commentText,
+          author_name: user.user_metadata.user_name,
+        },
+      ]);
+
+      if (error) {
+        alert(error);
+        return;
+      }
+
+      setIsModalOpen(false);
+      setCommentText("");
+      getComments(); // Refresh comments after posting
+    } catch (error) {
+      alert(error);
+    }
   };
 
   const getComments = async () => {
-    const { data, error } = await supabase
-      .from("post_comments")
-      .select("author_name, post_content")
-      .eq("post_id", post.id);
-    setCommentList(data);
+    try {
+      const { data, error } = await supabase
+        .from("post_comments")
+        .select("author_name, post_content")
+        .eq("post_id", post.id);
+
+      if (error) {
+        alert(error);
+        return;
+      }
+
+      setCommentList(data);
+    } catch (error) {
+      alert(error);
+    }
   };
 
   const alreadyLiked = async () => {
-    const user = await getUser();
-    const { data, error } = await supabase
-      .from("post_likes")
-      .select("*")
-      .or(
-        `and(user_id.eq.${user?.id},post_id.eq.${post.id}),and(post_id.eq.${post.id},user_id.eq.${user?.id})`
-      )
-      .limit(1);
-    return data && data.length > 0; // return True if the post id userid pairing exists in the table
+    try {
+      const user = await getUser();
+
+      if (!user) {
+        return false;
+      }
+
+      const { data, error } = await supabase
+        .from("post_likes")
+        .select("*")
+        .or(
+          `and(user_id.eq.${user.id},post_id.eq.${post.id}),and(post_id.eq.${post.id},user_id.eq.${user.id})`
+        )
+        .limit(1);
+
+      if (error) {
+        alert(error);
+        return false;
+      }
+
+      return data && data.length > 0; // return True if the post id userid pairing exists in the table
+    } catch (error) {
+      alert(error);
+      return false;
+    }
   };
   useEffect(() => {
     const checkIfLiked = async () => {
@@ -78,31 +136,60 @@ export default function PostCard({ post, formatDate }: PostProps) {
   }, []);
 
   const getLikeCount = async () => {
-    const { count, error } = await supabase
-      .from("post_likes")
-      .select("*", { count: "exact", head: true })
-      .eq("post_id", post.id);
-    setLikeCount(count || 0);
+    try {
+      const { count, error } = await supabase
+        .from("post_likes")
+        .select("*", { count: "exact", head: true })
+        .eq("post_id", post.id);
+
+      if (error) {
+        alert(error);
+        return;
+      }
+
+      setLikeCount(count || 0);
+    } catch (error) {
+      alert(error);
+    }
   };
   const handleLike = async () => {
-    const user = await getUser();
+    try {
+      const user = await getUser();
 
-    if (isAlreadyLiked) {
-      setIsAlreadyLiked(false);
-      const { data, error } = await supabase
-        .from("post_likes")
-        .delete()
-        .match({ user_id: user?.id, post_id: post.id });
-    } else {
-      if (user) {
+      if (!user) {
+        alert("You must be logged in to like posts");
+        return;
+      }
+
+      if (isAlreadyLiked) {
+        setIsAlreadyLiked(false);
         const { error } = await supabase
           .from("post_likes")
-          .insert([{ user_id: user?.id, post_id: post.id }]);
-      }
-      setIsAlreadyLiked(true);
-    }
+          .delete()
+          .match({ user_id: user.id, post_id: post.id });
 
-    getLikeCount();
+        if (error) {
+          alert(error);
+          setIsAlreadyLiked(true); // Revert state if operation failed
+          return;
+        }
+      } else {
+        const { error } = await supabase
+          .from("post_likes")
+          .insert([{ user_id: user.id, post_id: post.id }]);
+
+        if (error) {
+          alert(error);
+          return;
+        }
+
+        setIsAlreadyLiked(true);
+      }
+
+      getLikeCount();
+    } catch (error) {
+      alert(error);
+    }
   };
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 transform hover:-translate-y-1">

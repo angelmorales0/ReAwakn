@@ -10,7 +10,7 @@ interface MemberCardsProps {
   members: MemberWithSimilarity[];
   loggedInUserId?: string;
   showSimilarityScores?: boolean;
-  loggedInUser?: any;
+  loggedInUser?: Member;
 }
 
 export default function MemberCards({

@@ -10,8 +10,8 @@ import LoadingState from "./components/LoadingState";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [teachingSkillsData, setTeachingSkillsData] = useState<any[]>([]);
-  const [learningSkillsData, setLearningSkillsData] = useState<any[]>([]);
+  const [teachingSkillsData, setTeachingSkillsData] = useState<string[]>([]);
+  const [learningSkillsData, setLearningSkillsData] = useState<string[]>([]);
   const [isOwnProfile, setIsOwnProfile] = useState<boolean>(true);
   const router = useRouter();
   const supabase = createClient();
@@ -36,19 +36,17 @@ export default function ProfilePage() {
         .select("skill, type")
         .eq("user_id", targetUserId);
 
-      console.log(skillsData, skillsError);
-
       if (skillsData && !skillsError) {
         setTeachingSkillsData(
           skillsData
-            .filter((skill: any) => skill.type === "teach")
-            .map((skill: any) => skill.skill)
+            .filter((skill) => skill.type === "teach")
+            .map((skill) => skill.skill)
         );
 
         setLearningSkillsData(
           skillsData
-            .filter((skill: any) => skill.type === "learn")
-            .map((skill: any) => skill.skill)
+            .filter((skill) => skill.type === "learn")
+            .map((skill) => skill.skill)
         );
         const { data: queriedData, error } = await supabase
           .from("users")
@@ -82,7 +80,6 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    console.log(teachingSkillsData, learningSkillsData);
   }, [teachingSkillsData, learningSkillsData]);
   if (!profile) {
     return <LoadingState />;
