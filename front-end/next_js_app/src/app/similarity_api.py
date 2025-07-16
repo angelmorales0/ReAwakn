@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
 import json
+import sys
+
 from similarity_service import similarity_service
+
 
 def main():
     if len(sys.argv) < 2:
@@ -38,7 +40,9 @@ def main():
             user1_id = sys.argv[2]
             user2_id = sys.argv[3]
 
-            compatibility = similarity_service.get_user_compatibility_score(user1_id, user2_id)
+            compatibility = similarity_service.get_user_compatibility_score(
+                user1_id, user2_id
+            )
             print(json.dumps(compatibility))
 
         elif action == "refresh":
@@ -51,6 +55,7 @@ def main():
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

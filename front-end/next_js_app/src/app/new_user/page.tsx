@@ -44,10 +44,11 @@ export default function NewUserQuestionnaire() {
   const [newLearnSkill, setNewLearnSkill] = useState("");
 
   const availabilityOptions = [
-    "Weekday mornings",
-    "Weekday evenings",
-    "Weekends",
-    "Varies week to week",
+    "6:00 AM - 9:00 AM",
+    "9:00 AM - 12:00 PM",
+    "12:00 PM - 3:00 PM",
+    "3:00 PM - 6:00 PM",
+    "6:00 PM - 9:00 PM",
   ];
 
   const timeZones = [
@@ -59,6 +60,70 @@ export default function NewUserQuestionnaire() {
     "Hawaii Time (HT)",
     "Alaska Time (AKT)",
   ];
+
+  const tzOffsets: { [key: string]: number } = {
+    "Pacific Time (PT)": 8,
+    "Mountain Time (MT)": 7,
+    "Central Time (CT)": 6,
+    "Eastern Time (ET)": 5,
+    "Atlantic Time (AT)": 4,
+    "Alaska Time (AKT)": 9,
+    "Hawaii Time (HT)": 10,
+  };
+
+  const convertTo24Hour = (time12h: string): number => {
+    const [time, modifier] = time12h.split(" ");
+    let [hours] = time.split(":").map(Number);
+
+    if (hours === 12) {
+      hours = 0;
+    }
+    if (modifier === "PM") {
+      hours += 12;
+    }
+
+    return hours;
+  };
+
+  const pad_zeros = (num: number): string => {
+    return num.toString().padStart(2, "0");
+  };
+
+  const toUtcRange = (localRange: string, offset: number): string => {
+    const [start, end] = localRange
+      .split(" - ")
+      .map((t) => convertTo24Hour(t.trim()));
+
+    const startUtc = (start + offset) % 24;
+    const endUtc = (end + offset) % 24;
+
+    return `${pad_zeros(startUtc)}:00 - ${pad_zeros(endUtc)}:00`;
+  };
+
+  const convertAvailabilityToUTC = (
+    availabilitySlots: string[],
+    timezone: string
+  ): string[] => {
+    const offset = tzOffsets[timezone];
+    if (!offset) return availabilitySlots;
+
+    return availabilitySlots.map((slot) => toUtcRange(slot, offset));
+  };
+
+  const getEmbedding = async (skill: string) => {
+    // Convert string to bytes array using TextEncoder
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(skill.toLowerCase());
+
+    // Convert Uint8Array to a JSONB-compatible object
+    const jsonbEmbedding: Record<string, number> = {};
+    for (let i = 0; i < bytes.length; i++) {
+      jsonbEmbedding[i.toString()] = bytes[i];
+    }
+
+    console.log(jsonbEmbedding);
+    return jsonbEmbedding;
+  };
 
   const handleAvailabilityChange = (option: string) => {
     setFormData((prev) => ({
@@ -149,6 +214,12 @@ export default function NewUserQuestionnaire() {
         return;
       }
 
+      // Convert availability to UTC based on selected timezone
+      const utcAvailability = convertAvailabilityToUTC(
+        formData.availability,
+        formData.timeZone
+      );
+
       // First, update the user's profile information
       const { error: userUpdateError } = await supabase
         .from("users")
@@ -156,22 +227,22 @@ export default function NewUserQuestionnaire() {
           communication_style: formData.communicationStyle,
           time_zone: formData.timeZone,
           chronotype: formData.chronotype,
-          availability: formData.availability,
+          availability: utcAvailability,
           completed_onboarding: true,
         })
         .eq("id", user.id);
 
-      // Delete existing skills for this user if peresnt
+      if (userUpdateError) {
+        alert("There was an error updating your profile. Please try again.");
+        return;
+      }
+
+      // Delete existing skills for this user if present
       const { error: deleteError } = await supabase
         .from("user_skills")
         .delete()
         .eq("user_id", user.id);
 
-      if (deleteError) {
-        // Continue anyway, as this might just mean no existing skills
-      }
-
-      // Generate embeddings for teaching skills
       const teachSkillsWithEmbeddings = await Promise.all(
         formData.skillsToTeach.map(async (skill) => {
           const embedding = await getEmbedding(skill.skill);
@@ -185,7 +256,6 @@ export default function NewUserQuestionnaire() {
         })
       );
 
-      // Generate embeddings for learning skills
       const learnSkillsWithEmbeddings = await Promise.all(
         formData.skillsToLearn.map(async (skill) => {
           const embedding = await getEmbedding(skill.skill);
@@ -199,13 +269,11 @@ export default function NewUserQuestionnaire() {
         })
       );
 
-      // Prepare skills data for insertion
       const skillsToInsert = [
         ...teachSkillsWithEmbeddings,
         ...learnSkillsWithEmbeddings,
       ];
 
-      // Insert all skills
       if (skillsToInsert.length > 0) {
         const { error: skillsError } = await supabase
           .from("user_skills")
@@ -600,23 +668,3 @@ export default function NewUserQuestionnaire() {
     </div>
   );
 }
-const getEmbedding = async (skill: string): Promise<number[] | null> => {
-  try {
-    const response = await fetch("/api/embeddings", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ skill }),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.embedding;
-  } catch (error) {
-    return null;
-  }
-};
