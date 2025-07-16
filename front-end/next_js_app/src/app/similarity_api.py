@@ -8,7 +8,6 @@ from similarity_service import similarity_service
 
 def main():
     if len(sys.argv) < 2:
-        print("error", file=sys.stderr)
         sys.exit(1)
     action = sys.argv[1]
 
@@ -21,7 +20,6 @@ def main():
             user2_id = sys.argv[3]
 
             similarity = similarity_service.get_similarity(user1_id, user2_id)
-            print(similarity)
 
         elif action == "similar_users":
             if len(sys.argv) < 3:
@@ -31,7 +29,6 @@ def main():
             top_n = int(sys.argv[3]) if len(sys.argv) > 3 else 10
 
             similar_users = similarity_service.get_similar_users(user_id, top_n)
-            print(json.dumps(similar_users))
 
         elif action == "detailed_compatibility":
             if len(sys.argv) != 4:
@@ -43,17 +40,14 @@ def main():
             compatibility = similarity_service.get_user_compatibility_score(
                 user1_id, user2_id
             )
-            print(json.dumps(compatibility))
 
         elif action == "refresh":
             similarity_service.refresh_data()
 
         else:
-            print(f"Unknown action: {action}", file=sys.stderr)
             sys.exit(1)
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

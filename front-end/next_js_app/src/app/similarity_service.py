@@ -1,57 +1,63 @@
-import sys
-import os
-import pandas as pd
-import numpy as np
-from supabase import create_client, Client
-from dotenv import load_dotenv
-from sklearn.preprocessing import OneHotEncoder, MultiLabelBinarizer
-from sklearn.metrics.pairwise import cosine_similarity
 import ast
 import json
+import os
 import pickle
-from typing import Dict, List, Tuple, Optional
+import sys
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+from dotenv import load_dotenv
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
+from supabase import Client, create_client
 
 load_dotenv()
 
-def get_supabase_client() -> Client:# gets client
+
+def get_supabase_client() -> Client:  # gets client
 
     url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
     key = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
     return create_client(url, key)
 
-def fetch_all_users(): #gets users table data and makes it a dataframe
+
+def fetch_all_users():  # gets users table data and makes it a dataframe
     try:
         supabase = get_supabase_client()
-        users_table = supabase.table('users').select('*').execute()
+        users_table = supabase.table("users").select("*").execute()
         df = pd.DataFrame(users_table.data)
         return df
     except Exception as e:
-        print(f"Error fetching user data: {e}")
         return pd.DataFrame()
 
-def preprocess_availability_data(df): # makes data format consistent
+
+def preprocess_availability_data(df):  # makes data format consistent
 
     availability_lists = []
 
     for idx, row in df.iterrows():
-        availability = row['availability']
+        availability = row["availability"]
 
-        if isinstance(availability, str): # case for one avaliability chosen
+        if isinstance(availability, str):  # case for one avaliability chosen
             try:
                 parsed = json.loads(availability)
                 availability_lists.append(parsed if isinstance(parsed, list) else [])
             except:
                 try:
                     parsed = ast.literal_eval(availability)
-                    availability_lists.append(parsed if isinstance(parsed, list) else [])
+                    availability_lists.append(
+                        parsed if isinstance(parsed, list) else []
+                    )
                 except:
                     availability_lists.append([])
-        elif isinstance(availability, list): # case for multiple
+        elif isinstance(availability, list):  # case for multiple
             availability_lists.append(availability)
         else:
             availability_lists.append([])
 
     return availability_lists
+
 
 def create_encoders_and_hashmap():
     """
@@ -67,35 +73,38 @@ def create_encoders_and_hashmap():
     encoders = {}
     encoded_dfs = {}
 
-
-    simple_columns = ['communication_style', 'time_zone', 'chronotype']
+    simple_columns = ["communication_style", "time_zone", "chronotype"]
 
     for col in simple_columns:
         if col in users_df.columns:
-            encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-            col_data = users_df[col].values.reshape(-1, 1) # makes it a 2d OHE array
+            encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
+            col_data = users_df[col].values.reshape(-1, 1)  # makes it a 2d OHE array
             encoded_data = encoder.fit_transform(col_data)
             feature_names = [f"{col}_{category}" for category in encoder.categories_[0]]
-            encoded_df = pd.DataFrame(encoded_data, columns=feature_names, index=users_df.index)
+            encoded_df = pd.DataFrame(
+                encoded_data, columns=feature_names, index=users_df.index
+            )
 
             encoders[col] = encoder
             encoded_dfs[col] = encoded_df
 
-    if 'availability' in users_df.columns:
+    if "availability" in users_df.columns:
         availability_lists = preprocess_availability_data(users_df)
         mlb = MultiLabelBinarizer()
         availability_encoded = mlb.fit_transform(availability_lists)
         feature_names = [f"availability_{label}" for label in mlb.classes_]
-        availability_df = pd.DataFrame(availability_encoded, columns=feature_names, index=users_df.index)
+        availability_df = pd.DataFrame(
+            availability_encoded, columns=feature_names, index=users_df.index
+        )
 
-        encoders['availability'] = mlb
-        encoded_dfs['availability'] = availability_df
+        encoders["availability"] = mlb
+        encoded_dfs["availability"] = availability_df
 
     # Combine all encoded features
     all_encoded_features = []
     feature_names = []
 
-    for col_name in ['communication_style', 'time_zone', 'chronotype', 'availability']:
+    for col_name in ["communication_style", "time_zone", "chronotype", "availability"]:
         if col_name in encoded_dfs and not encoded_dfs[col_name].empty:
             all_encoded_features.append(encoded_dfs[col_name])
             feature_names.extend(encoded_dfs[col_name].columns.tolist())
@@ -108,13 +117,16 @@ def create_encoders_and_hashmap():
     # Create hashmap: user_id: encoded_vector
     user_encodings = {}
     for idx, row in users_df.iterrows():
-        user_id = row['id']
+        user_id = row["id"]
         encoded_vector = combined_encoded.iloc[idx].values
         user_encodings[user_id] = encoded_vector
 
     return encoders, user_encodings, feature_names
 
-def calculate_user_similarity(user1_id: str, user2_id: str, user_encodings: Dict) -> float:
+
+def calculate_user_similarity(
+    user1_id: str, user2_id: str, user_encodings: Dict
+) -> float:
     if user1_id not in user_encodings or user2_id not in user_encodings:
         return 0.0
 
@@ -124,7 +136,10 @@ def calculate_user_similarity(user1_id: str, user2_id: str, user_encodings: Dict
     similarity = cosine_similarity(user1_vector, user2_vector)[0][0]
     return float(similarity)
 
-def get_similar_users(target_user_id: str, user_encodings: Dict, top_n: int = 10) -> List[Tuple[str, float]]:
+
+def get_similar_users(
+    target_user_id: str, user_encodings: Dict, top_n: int = 10
+) -> List[Tuple[str, float]]:
 
     if target_user_id not in user_encodings:
         return []
@@ -141,28 +156,36 @@ def get_similar_users(target_user_id: str, user_encodings: Dict, top_n: int = 10
     similarities.sort(key=lambda x: x[1], reverse=True)
     return similarities[:top_n]
 
-def save_encoders_and_data(encoders: Dict, user_encodings: Dict, feature_names: List[str],
-                          filepath: str = "user_similarity_data.pkl"):
-    #Save encoders and user encodings to a file
+
+def save_encoders_and_data(
+    encoders: Dict,
+    user_encodings: Dict,
+    feature_names: List[str],
+    filepath: str = "user_similarity_data.pkl",
+):
+    # Save encoders and user encodings to a file
     data = {
-        'encoders': encoders,
-        'user_encodings': user_encodings,
-        'feature_names': feature_names
+        "encoders": encoders,
+        "user_encodings": user_encodings,
+        "feature_names": feature_names,
     }
 
-    with open(filepath, 'wb') as f:
+    with open(filepath, "wb") as f:
         pickle.dump(data, f)
 
 
-def load_encoders_and_data(filepath: str = "user_similarity_data.pkl") -> Tuple[Dict, Dict, List[str]]:
-    #load data from a file
+def load_encoders_and_data(
+    filepath: str = "user_similarity_data.pkl",
+) -> Tuple[Dict, Dict, List[str]]:
+    # load data from a file
     try:
-        with open(filepath, 'rb') as f:
+        with open(filepath, "rb") as f:
             data = pickle.load(f)
 
-        return data['encoders'], data['user_encodings'], data['feature_names']
+        return data["encoders"], data["user_encodings"], data["feature_names"]
     except FileNotFoundError:
         return create_encoders_and_hashmap()
+
 
 class SimilarityService:
     def __init__(self, use_cache: bool = True):
@@ -175,9 +198,13 @@ class SimilarityService:
 
     def _load_data(self):
         if self.use_cache:
-            self.encoders, self.user_encodings, self.feature_names = load_encoders_and_data(self.cache_file)
+            self.encoders, self.user_encodings, self.feature_names = (
+                load_encoders_and_data(self.cache_file)
+            )
         else:
-            self.encoders, self.user_encodings, self.feature_names = create_encoders_and_hashmap()
+            self.encoders, self.user_encodings, self.feature_names = (
+                create_encoders_and_hashmap()
+            )
 
     def _check_user_exists(self, user_id: str) -> bool:
         """Check if a user exists in the current encodings"""
@@ -186,13 +213,16 @@ class SimilarityService:
     def _ensure_user_data(self, user_id: str):
         """Ensure user data is available, refresh if necessary"""
         if not self._check_user_exists(user_id):
-            print(f"User {user_id} not found in cached data, refreshing...")
             self.refresh_data()
 
     def refresh_data(self):
-        self.encoders, self.user_encodings, self.feature_names = create_encoders_and_hashmap()
+        self.encoders, self.user_encodings, self.feature_names = (
+            create_encoders_and_hashmap()
+        )
         if self.use_cache:
-            save_encoders_and_data(self.encoders, self.user_encodings, self.feature_names, self.cache_file)
+            save_encoders_and_data(
+                self.encoders, self.user_encodings, self.feature_names, self.cache_file
+            )
 
     def get_similarity(self, user1_id: str, user2_id: str) -> float:
         if not self.user_encodings:
@@ -204,7 +234,9 @@ class SimilarityService:
 
         return calculate_user_similarity(user1_id, user2_id, self.user_encodings)
 
-    def get_similar_users(self, user_id: str, top_n: int = 10) -> List[Tuple[str, float]]:
+    def get_similar_users(
+        self, user_id: str, top_n: int = 10
+    ) -> List[Tuple[str, float]]:
         if not self.user_encodings:
             return []
 
@@ -214,8 +246,12 @@ class SimilarityService:
         return get_similar_users(user_id, self.user_encodings, top_n)
 
     def get_user_compatibility_score(self, user1_id: str, user2_id: str) -> Dict:
-        if not self.user_encodings or user1_id not in self.user_encodings or user2_id not in self.user_encodings:
-            return {'overall_similarity': 0.0, 'feature_breakdown': {}}
+        if (
+            not self.user_encodings
+            or user1_id not in self.user_encodings
+            or user2_id not in self.user_encodings
+        ):
+            return {"overall_similarity": 0.0, "feature_breakdown": {}}
 
         overall_similarity = self.get_similarity(user1_id, user2_id)
 
@@ -224,9 +260,14 @@ class SimilarityService:
         user2_vector = self.user_encodings[user2_id]
 
         start_idx = 0
-        for category in ['communication_style', 'time_zone', 'chronotype', 'availability']:
+        for category in [
+            "communication_style",
+            "time_zone",
+            "chronotype",
+            "availability",
+        ]:
             if category in self.encoders:
-                if category == 'availability':
+                if category == "availability":
                     n_features = len(self.encoders[category].classes_)
                 else:
                     n_features = len(self.encoders[category].categories_[0])
@@ -240,13 +281,12 @@ class SimilarityService:
                     start_idx = end_idx
 
         return {
-            'overall_similarity': overall_similarity,
-            'feature_breakdown': feature_breakdown
+            "overall_similarity": overall_similarity,
+            "feature_breakdown": feature_breakdown,
         }
 
+
 similarity_service = SimilarityService()
-
-
 
 
 if __name__ == "__main__":
