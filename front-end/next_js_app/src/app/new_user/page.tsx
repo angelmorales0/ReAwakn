@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import createClient from "@/app/utils/supabase/client";
 
 interface SkillLevel {
@@ -29,7 +30,6 @@ interface QuestionnaireData {
 
 export default function NewUserQuestionnaire() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [formData, setFormData] = useState<QuestionnaireData>({
     skillsToTeach: [],
@@ -40,13 +40,8 @@ export default function NewUserQuestionnaire() {
     timeZone: "",
   });
 
-  const skillOptions = [
-    "Fitness",
-    "Cooking",
-    "Professional Development",
-    "Academics",
-    "Music",
-  ];
+  const [newTeachSkill, setNewTeachSkill] = useState("");
+  const [newLearnSkill, setNewLearnSkill] = useState("");
 
   const availabilityOptions = [
     "Weekday mornings",
@@ -64,43 +59,6 @@ export default function NewUserQuestionnaire() {
     "Hawaii Time (HT)",
     "Alaska Time (AKT)",
   ];
-
-  const handleSkillToggle = (skill: string, type: "teach" | "learn") => {
-    const field = type === "teach" ? "skillsToTeach" : "skillsToLearn";
-
-    setFormData((prev) => ({
-      ...prev,
-      [field]: prev[field].some((s) => s.skill === skill)
-        ? prev[field].filter((s) => s.skill !== skill)
-        : [...prev[field], { skill, level: 1 }],
-    }));
-  };
-
-  const handleSkillLevelChange = (
-    skill: string,
-    level: number,
-    type: "teach" | "learn"
-  ) => {
-    const field = type === "teach" ? "skillsToTeach" : "skillsToLearn";
-
-    setFormData((prev) => ({
-      ...prev,
-      [field]: prev[field].map((s) =>
-        s.skill === skill ? { ...s, level } : s
-      ),
-    }));
-  };
-
-  const isSkillSelected = (skill: string, type: "teach" | "learn"): boolean => {
-    const field = type === "teach" ? "skillsToTeach" : "skillsToLearn";
-    return formData[field].some((s) => s.skill === skill);
-  };
-
-  const getSkillLevel = (skill: string, type: "teach" | "learn"): number => {
-    const field = type === "teach" ? "skillsToTeach" : "skillsToLearn";
-    const skillObj = formData[field].find((s) => s.skill === skill);
-    return skillObj?.level || 1;
-  };
 
   const handleAvailabilityChange = (option: string) => {
     setFormData((prev) => ({
@@ -179,20 +137,22 @@ export default function NewUserQuestionnaire() {
     }
 
     try {
+      const supabase = createClient();
+
+      // Get the current authenticated user
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
-      if (!user) {
-        alert("Please log in to complete your profile.");
-        router.push("/login");
+
+      if (authError || !user) {
         return;
       }
 
-      const { data, error } = await supabase
+      // First, update the user's profile information
+      const { error: userUpdateError } = await supabase
         .from("users")
         .update({
-          teaching_skills: formData.skillsToTeach,
-          learning_skills: formData.skillsToLearn,
           communication_style: formData.communicationStyle,
           time_zone: formData.timeZone,
           chronotype: formData.chronotype,
@@ -200,12 +160,65 @@ export default function NewUserQuestionnaire() {
           completed_onboarding: true,
         })
         .eq("id", user.id);
-      if (error) {
-        alert("There was an error saving your profile. Please try again.");
-      } else {
-        alert("Profile completed successfully!");
-        router.push("/");
+
+      // Delete existing skills for this user if peresnt
+      const { error: deleteError } = await supabase
+        .from("user_skills")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (deleteError) {
+        // Continue anyway, as this might just mean no existing skills
       }
+
+      // Generate embeddings for teaching skills
+      const teachSkillsWithEmbeddings = await Promise.all(
+        formData.skillsToTeach.map(async (skill) => {
+          const embedding = await getEmbedding(skill.skill);
+          return {
+            user_id: user.id,
+            skill: skill.skill,
+            level: skill.level,
+            type: "teach",
+            embedding: embedding,
+          };
+        })
+      );
+
+      // Generate embeddings for learning skills
+      const learnSkillsWithEmbeddings = await Promise.all(
+        formData.skillsToLearn.map(async (skill) => {
+          const embedding = await getEmbedding(skill.skill);
+          return {
+            user_id: user.id,
+            skill: skill.skill,
+            level: skill.level,
+            type: "learn",
+            embedding: embedding,
+          };
+        })
+      );
+
+      // Prepare skills data for insertion
+      const skillsToInsert = [
+        ...teachSkillsWithEmbeddings,
+        ...learnSkillsWithEmbeddings,
+      ];
+
+      // Insert all skills
+      if (skillsToInsert.length > 0) {
+        const { error: skillsError } = await supabase
+          .from("user_skills")
+          .insert(skillsToInsert);
+
+        if (skillsError) {
+          alert("There was an error saving your skills. Please try again.");
+          return;
+        }
+      }
+
+      alert("Profile completed successfully!");
+      router.push("/home");
     } catch (error) {
       alert("There was an error saving your profile. Please try again.");
     }
@@ -226,112 +239,212 @@ export default function NewUserQuestionnaire() {
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-8">
-              {/* Question 1: Skills to Teach with Individual Levels */}
+              {/* Question 1: Skills to Teach */}
               <div className="space-y-4">
                 <Label className="text-lg font-semibold">
-                  1. What skills can you confidently teach and at what level? *
+                  1. What skills can you confidently teach? (5 MAX) *
                 </Label>
                 <div className="space-y-4">
-                  {skillOptions.map((skill) => (
-                    <div key={skill} className="border rounded-lg p-4">
-                      <label className="flex items-center space-x-3 cursor-pointer mb-3">
-                        <input
-                          type="checkbox"
-                          checked={isSkillSelected(skill, "teach")}
-                          onChange={() => handleSkillToggle(skill, "teach")}
-                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <span className="font-medium">{skill}</span>
-                      </label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Enter a skill you can teach"
+                      value={newTeachSkill}
+                      onChange={(e) => setNewTeachSkill(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          newTeachSkill.trim() &&
+                          !formData.skillsToTeach.some(
+                            (s) => s.skill === newTeachSkill.trim()
+                          )
+                        ) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            skillsToTeach: [
+                              ...prev.skillsToTeach,
+                              { skill: newTeachSkill.trim(), level: 1 },
+                            ],
+                          }));
+                          setNewTeachSkill("");
+                        }
+                      }}
+                      disabled={
+                        !newTeachSkill.trim() ||
+                        formData.skillsToTeach.length >= 5
+                      }
+                    >
+                      Add
+                    </Button>
+                  </div>
 
-                      {isSkillSelected(skill, "teach") && (
-                        <div className="ml-7 space-y-2">
-                          <p className="text-sm text-gray-600 mb-2">
-                            Your teaching level:
-                          </p>
-                          {[1, 2, 3].map((level) => (
-                            <label
-                              key={level}
-                              className="flex items-center space-x-2 cursor-pointer"
+                  {formData.skillsToTeach.length > 0 && (
+                    <div className="space-y-3">
+                      {formData.skillsToTeach.map((skillObj, index) => (
+                        <div key={index} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="font-medium">
+                              {skillObj.skill}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  skillsToTeach: prev.skillsToTeach.filter(
+                                    (_, i) => i !== index
+                                  ),
+                                }));
+                              }}
                             >
-                              <input
-                                type="radio"
-                                name={`teach-${skill}`}
-                                value={level}
-                                checked={
-                                  getSkillLevel(skill, "teach") === level
-                                }
-                                onChange={() =>
-                                  handleSkillLevelChange(skill, level, "teach")
-                                }
-                                className="w-3 h-3 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="text-sm">
-                                {level === 1 && "Beginner (1 pt)"}
-                                {level === 2 && "Know the basics (2 pts)"}
-                                {level === 3 && "Intermediate (3 pts)"}
-                              </span>
-                            </label>
-                          ))}
+                              Remove
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-600 mb-2">
+                              Your teaching level:
+                            </p>
+                            {[1, 2, 3].map((level) => (
+                              <label
+                                key={level}
+                                className="flex items-center space-x-2 cursor-pointer"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`teach-${index}`}
+                                  value={level}
+                                  checked={skillObj.level === level}
+                                  onChange={() => {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      skillsToTeach: prev.skillsToTeach.map(
+                                        (s, i) =>
+                                          i === index ? { ...s, level } : s
+                                      ),
+                                    }));
+                                  }}
+                                  className="w-3 h-3 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm">
+                                  {level === 1 && "Beginner (1 pt)"}
+                                  {level === 2 && "Know the basics (2 pts)"}
+                                  {level === 3 && "Intermediate (3 pts)"}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
-              {/* Question 2: Skills to Learn with Individual Levels */}
+              {/* Question 2: Skills to Learn */}
               <div className="space-y-4">
                 <Label className="text-lg font-semibold">
-                  2. What skills are you interested in learning and at what
-                  level are you currently? *
+                  2. What skills are you interested in learning? (5 MAX) *
                 </Label>
                 <div className="space-y-4">
-                  {skillOptions.map((skill) => (
-                    <div key={skill} className="border rounded-lg p-4">
-                      <label className="flex items-center space-x-3 cursor-pointer mb-3">
-                        <input
-                          type="checkbox"
-                          checked={isSkillSelected(skill, "learn")}
-                          onChange={() => handleSkillToggle(skill, "learn")}
-                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <span className="font-medium">{skill}</span>
-                      </label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Enter a skill you want to learn"
+                      value={newLearnSkill}
+                      onChange={(e) => setNewLearnSkill(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          newLearnSkill.trim() &&
+                          !formData.skillsToLearn.some(
+                            (s) => s.skill === newLearnSkill.trim()
+                          )
+                        ) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            skillsToLearn: [
+                              ...prev.skillsToLearn,
+                              { skill: newLearnSkill.trim(), level: 1 },
+                            ],
+                          }));
+                          setNewLearnSkill("");
+                        }
+                      }}
+                      disabled={!newLearnSkill.trim()}
+                    >
+                      Add
+                    </Button>
+                  </div>
 
-                      {isSkillSelected(skill, "learn") && (
-                        <div className="ml-7 space-y-2">
-                          <p className="text-sm text-gray-600 mb-2">
-                            Your current level:
-                          </p>
-                          {[1, 2, 3].map((level) => (
-                            <label
-                              key={level}
-                              className="flex items-center space-x-2 cursor-pointer"
+                  {formData.skillsToLearn.length > 0 && (
+                    <div className="space-y-3">
+                      {formData.skillsToLearn.map((skillObj, index) => (
+                        <div key={index} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="font-medium">
+                              {skillObj.skill}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  skillsToLearn: prev.skillsToLearn.filter(
+                                    (_, i) => i !== index
+                                  ),
+                                }));
+                              }}
                             >
-                              <input
-                                type="radio"
-                                name={`learn-${skill}`}
-                                value={level}
-                                checked={
-                                  getSkillLevel(skill, "learn") === level
-                                }
-                                onChange={() =>
-                                  handleSkillLevelChange(skill, level, "learn")
-                                }
-                                className="w-3 h-3 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="text-sm">
-                                {level === 1 && "Complete beginner (1 pt)"}
-                                {level === 2 && "Know the basics (2 pts)"}
-                                {level === 3 && "Intermediate (3 pts)"}
-                              </span>
-                            </label>
-                          ))}
+                              Remove
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-sm text-gray-600 mb-2">
+                              Your current level:
+                            </p>
+                            {[1, 2, 3].map((level) => (
+                              <label
+                                key={level}
+                                className="flex items-center space-x-2 cursor-pointer"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`learn-${index}`}
+                                  value={level}
+                                  checked={skillObj.level === level}
+                                  onChange={() => {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      skillsToLearn: prev.skillsToLearn.map(
+                                        (s, i) =>
+                                          i === index ? { ...s, level } : s
+                                      ),
+                                    }));
+                                  }}
+                                  className="w-3 h-3 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm">
+                                  {level === 1 && "Complete beginner (1 pt)"}
+                                  {level === 2 && "Know the basics (2 pts)"}
+                                  {level === 3 && "Intermediate (3 pts)"}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
@@ -487,3 +600,23 @@ export default function NewUserQuestionnaire() {
     </div>
   );
 }
+const getEmbedding = async (skill: string): Promise<number[] | null> => {
+  try {
+    const response = await fetch("/api/embeddings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ skill }),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.embedding;
+  } catch (error) {
+    return null;
+  }
+};

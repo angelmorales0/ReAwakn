@@ -5,10 +5,12 @@ import MemberCards from "./MemberCards";
 import createClient from "@/app/utils/supabase/client";
 import HomeButton from "@/components/homeButton";
 import { Member } from "@/types/member";
-
+import RefreshSimilarityButton from "./RefreshSimilarityButton";
 interface MemberWithSimilarity extends Member {
   similarityScore?: number;
   similarityLoading?: boolean;
+  maxLearnScore?: number;
+  maxTeachScore?: number;
 }
 
 export default function SearchPage() {
@@ -102,9 +104,42 @@ export default function SearchPage() {
           setLoggedInUser(formattedUser);
         }
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   };
+  /// VIABLE / NON VIABLE MATCH LOGIC FOR MATCH (NOT SEARCH) PAGE
+
+  function cosineSimilarity(vecA: number[], vecB: number[]): number {
+    const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
+    const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
+    const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
+    return dotProduct / (magnitudeA * magnitudeB);
+  }
+
+  function hasSimilarSkills(userA: any, userB: any) {
+    // FROM USER A'S PERSPECTIVE = LOGGED IN
+    let max_learn_score = 0;
+    let max_teach_score = 0;
+
+    for (const learnVec of userA.learning_embeddings || []) {
+      for (const teachVec of userB.teaching_embeddings || []) {
+        max_learn_score = Math.max(
+          max_learn_score,
+          cosineSimilarity(learnVec, teachVec)
+        );
+      }
+    }
+
+    for (const learnVec of userB.learning_embeddings || []) {
+      for (const teachVec of userA.teaching_embeddings || []) {
+        max_teach_score = Math.max(
+          max_teach_score,
+          cosineSimilarity(learnVec, teachVec)
+        );
+      }
+    }
+
+    return { max_learn_score, max_teach_score };
+  }
 
   const calculateSimilarityScores = async (
     membersToCalculate: MemberWithSimilarity[]
@@ -114,8 +149,44 @@ export default function SearchPage() {
     setCalculatingScores(true);
     const newScores = new Map(similarityScores);
 
+    // Get logged in user's full data with embeddings
+    const { data: loggedInUserData } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", loggedInUser.id)
+      .single();
+
     for (const member of membersToCalculate) {
       try {
+        // Get member's full data with embeddings
+        const { data: memberData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", member.id)
+          .single();
+
+        // Calculate learning/teaching scores
+        if (loggedInUserData && memberData) {
+          const { max_learn_score, max_teach_score } = hasSimilarSkills(
+            loggedInUserData,
+            memberData
+          );
+
+          // Update member with learning/teaching scores
+          const memberIndex = members.findIndex((m) => m.id === member.id);
+          if (memberIndex !== -1) {
+            setMembers((prevMembers) => {
+              const updatedMembers = [...prevMembers];
+              updatedMembers[memberIndex] = {
+                ...updatedMembers[memberIndex],
+                maxLearnScore: max_learn_score,
+                maxTeachScore: max_teach_score,
+              };
+              return updatedMembers;
+            });
+          }
+        }
+
         const response = await fetch("/api/similarity", {
           //ORIGINAL REQ TO SIMILARITY SERVICE
           method: "POST",
@@ -176,12 +247,16 @@ export default function SearchPage() {
           <p className="text-gray-600">
             Find and connect with other learners and teachers
           </p>
-          {loggedInUser && (
-            <div className="mt-2 text-sm text-gray-500">
-              Showing compatibility scores with{" "}
-              <span className="font-semibold">{loggedInUser.displayName}</span>
-            </div>
-          )}
+
+          <RefreshSimilarityButton
+            onRefreshComplete={() => {
+              // Clear existing similarity scores and recalculate
+              setSimilarityScores(new Map());
+              if (members.length > 0) {
+                calculateSimilarityScores(members);
+              }
+            }}
+          />
         </div>
 
         <SearchBar
@@ -211,6 +286,7 @@ export default function SearchPage() {
           members={sortedMembers}
           loggedInUserId={loggedInUser?.id || ""}
           showSimilarityScores={true}
+          loggedInUser={loggedInUser}
         />
       </div>
     </div>
