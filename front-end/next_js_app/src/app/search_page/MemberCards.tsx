@@ -1,17 +1,5 @@
 import MemberCard from "./MemberCard";
-import { Member } from "@/types/member";
-
-interface MemberWithSimilarity extends Member {
-  similarityScore?: number;
-  similarityLoading?: boolean;
-}
-
-interface MemberCardsProps {
-  members: MemberWithSimilarity[];
-  loggedInUserId?: string;
-  showSimilarityScores?: boolean;
-  loggedInUser?: Member;
-}
+import { MemberCardsProps } from "@/types/types";
 
 export default function MemberCards({
   members,

@@ -1,4 +1,4 @@
-import { UserProfile } from "@/types/user";
+import { UserProfile } from "@/types/types";
 import { useRouter } from "next/navigation";
 
 interface ProfileHeaderProps {

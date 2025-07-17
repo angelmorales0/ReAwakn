@@ -5,7 +5,7 @@ import path from "path";
 interface SimilarityRequest {
   loggedInUserId: string;
   targetUserId: string;
-  action: "similarity" | "compatible_users" | "detailed_compatibility";
+  action: "similarity";
   topN?: number;
 }
 
@@ -19,6 +19,9 @@ interface SimilarityResponse {
   error?: string;
 }
 
+/**
+ * Runs a Python script with the given arguments and returns the output
+ */
 function runPythonScript(scriptPath: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const env = {
@@ -33,7 +36,7 @@ function runPythonScript(scriptPath: string, args: string[]): Promise<string> {
     });
     let output = "";
     let errorOutput = "";
-
+    //uses next JS api calls to run python script thru terminal
     python.stdout.on("data", (data) => {
       const dataStr = data.toString();
       output += dataStr;
@@ -60,6 +63,115 @@ function runPythonScript(scriptPath: string, args: string[]): Promise<string> {
   });
 }
 
+/**
+ * Gets the path to the Python similarity script
+ */
+function getPythonScriptPath(): string {
+  return path.join(process.cwd(), "src", "app", "similarity_api.py");
+}
+
+/**
+ * Calculates similarity between two users
+ */
+async function calculateSimilarity(
+  userId1: string,
+  userId2: string,
+  isGet: boolean = false
+): Promise<{ similarity?: number; error?: string }> {
+  try {
+    const output = await runPythonScript(getPythonScriptPath(), [
+      "similarity",
+      userId1,
+      userId2,
+    ]);
+
+    const trimmedOutput = output.trim();
+    if (!trimmedOutput) {
+      throw new Error("Empty response from similarity calculation");
+    }
+
+    const similarity = parseFloat(trimmedOutput);
+
+    if (isNaN(similarity)) {
+      throw new Error("Invalid similarity score: not a number");
+    }
+
+    if (similarity < 0 || similarity > 1) {
+      throw new Error(`Similarity score out of expected range: ${similarity}`);
+    }
+
+    return { similarity };
+  } catch (error: any) {
+    const prefix = isGet ? "GET " : "";
+    console.error(`${prefix}Similarity calculation error:`, error);
+    return {
+      error: `Failed to calculate similarity: ${
+        error.message || "Unknown error"
+      }`,
+    };
+  }
+}
+
+async function findSimilarUsers(
+  userId: string,
+  topN: number
+): Promise<{
+  similarUsers?: Array<{ userId: string; score: number }>;
+  error?: string;
+}> {
+  try {
+    const output = await runPythonScript(getPythonScriptPath(), [
+      "similar_users",
+      userId,
+      topN.toString(),
+    ]);
+
+    const similarUsers = JSON.parse(output.trim());
+
+    if (!Array.isArray(similarUsers)) {
+      throw new Error("Invalid similar users data: not an array");
+    }
+
+    const invalidItems = [];
+    for (let i = 0; i < similarUsers.length; i++) {
+      const item = similarUsers[i];
+
+      if (!Array.isArray(item) || item.length !== 2) {
+        invalidItems.push(
+          `Item at index ${i} is not a valid [userId, score] pair`
+        );
+        continue;
+      }
+
+      if (typeof item[0] !== "string") {
+        invalidItems.push(`UserId at index ${i} is not a string`);
+      }
+
+      if (typeof item[1] !== "number" || isNaN(item[1])) {
+        invalidItems.push(`Score at index ${i} is not a valid number`);
+      }
+    }
+
+    if (invalidItems.length > 0) {
+      throw new Error(`Invalid similar users data: ${invalidItems.join("; ")}`);
+    }
+
+    return {
+      similarUsers: similarUsers.map((item: [string, number]) => ({
+        userId: item[0],
+        score: item[1],
+      })),
+    };
+  } catch (error: any) {
+    console.error("Similar users calculation error:", error);
+    return {
+      error: `Failed to find similar users: ${
+        error.message || "Unknown error"
+      }`,
+    };
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: SimilarityRequest = await request.json();
@@ -72,61 +184,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Path to the Python similarity service
-    const pythonScriptPath = path.join(
-      process.cwd(),
-      "src",
-      "app",
-      "similarity_api.py"
-    );
-
     let result: SimilarityResponse = {};
 
     switch (action) {
       case "similarity":
-        try {
-          const output = await runPythonScript(pythonScriptPath, [
-            "similarity",
-            loggedInUserId,
-            targetUserId,
-          ]);
-
-          const similarity = parseFloat(output.trim());
-
-          result.similarity = similarity;
-        } catch (error) {
-          result.error = "Failed to calculate similarity";
-        }
-        break;
-
-      case "compatible_users":
-        try {
-          const output = await runPythonScript(pythonScriptPath, [
-            "similar_users",
-            loggedInUserId,
-            topN.toString(),
-          ]);
-          const similarUsers = JSON.parse(output.trim());
-          result.similarUsers = similarUsers.map((item: [string, number]) => ({
-            userId: item[0],
-            score: item[1],
-          }));
-        } catch (error) {
-          result.error = "Failed to find similar users";
-        }
-        break;
-
-      case "detailed_compatibility":
-        try {
-          const output = await runPythonScript(pythonScriptPath, [
-            "detailed_compatibility",
-            loggedInUserId,
-            targetUserId,
-          ]);
-          const compatibility = JSON.parse(output.trim());
-          result.compatibility = compatibility;
-        } catch (error) {
-          result.error = "Failed to calculate detailed compatibility";
+        const similarityResult = await calculateSimilarity(
+          loggedInUserId,
+          targetUserId
+        );
+        if (similarityResult.similarity !== undefined) {
+          result.similarity = similarityResult.similarity;
+        } else if (similarityResult.error) {
+          result.error = similarityResult.error;
         }
         break;
 
@@ -139,6 +208,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
+    console.error(error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -147,6 +217,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  //GET REQ
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action");
   const userId = searchParams.get("userId");
@@ -161,12 +232,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const pythonScriptPath = path.join(
-      process.cwd(),
-      "src",
-      "app",
-      "similarity_api.py"
-    );
     let result: SimilarityResponse = {};
 
     switch (action) {
@@ -177,25 +242,26 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           );
         }
-        const output = await runPythonScript(pythonScriptPath, [
-          "similarity",
+
+        const similarityResult = await calculateSimilarity(
           userId,
           targetUserId,
-        ]);
-        result.similarity = parseFloat(output.trim());
+          true
+        );
+        if (similarityResult.similarity !== undefined) {
+          result.similarity = similarityResult.similarity;
+        } else if (similarityResult.error) {
+          result.error = similarityResult.error;
+        }
         break;
 
       case "similar_users":
-        const similarOutput = await runPythonScript(pythonScriptPath, [
-          "similar_users",
-          userId,
-          topN.toString(),
-        ]);
-        const similarUsers = JSON.parse(similarOutput.trim());
-        result.similarUsers = similarUsers.map((item: [string, number]) => ({
-          userId: item[0],
-          score: item[1],
-        }));
+        const similarUsersResult = await findSimilarUsers(userId, topN);
+        if (similarUsersResult.similarUsers) {
+          result.similarUsers = similarUsersResult.similarUsers;
+        } else if (similarUsersResult.error) {
+          result.error = similarUsersResult.error;
+        }
         break;
 
       default:
@@ -207,9 +273,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
+    console.error(error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
     );
   }
 }
+
+//route file is responsible for calling the correct action

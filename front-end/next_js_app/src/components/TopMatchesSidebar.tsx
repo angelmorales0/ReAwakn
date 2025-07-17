@@ -1,20 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import createClient from "@/app/utils/supabase/client";
-
-interface MatchUser {
-  id: string;
-  name: string;
-  email?: string;
-  maxLearnScore?: number;
-  maxTeachScore?: number;
-}
+import { supabase } from "@/app/utils/supabase/client";
+import { MatchUser } from "@/types/types";
 
 export default function TopMatchesSidebar() {
   const [topMatches, setTopMatches] = useState<MatchUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
   const router = useRouter();
 
   // Cosine similarity calculation
@@ -25,7 +17,7 @@ export default function TopMatchesSidebar() {
     return dotProduct / (magnitudeA * magnitudeB);
   }
 
-  // Calculate learning/teaching similarity scores
+  // TODO USE CALLBACK INSTEAD IF POSSIBLE
   async function calculateSimilarityScores(
     loggedInUserId: string,
     targetUserId: string

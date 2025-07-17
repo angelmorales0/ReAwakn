@@ -19,7 +19,6 @@ def main():
             user2_id = sys.argv[3]
 
             similarity = similarity_service.get_similarity(user1_id, user2_id)
-            print(similarity)
 
         elif action == "similar_users":
             if len(sys.argv) < 3:
@@ -29,7 +28,6 @@ def main():
             top_n = int(sys.argv[3]) if len(sys.argv) > 3 else 10
 
             similar_users = similarity_service.get_similar_users(user_id, top_n)
-            print(json.dumps(similar_users))
 
         elif action == "detailed_compatibility":
             if len(sys.argv) != 4:

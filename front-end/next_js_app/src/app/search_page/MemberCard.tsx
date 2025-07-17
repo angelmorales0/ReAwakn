@@ -1,18 +1,7 @@
 import { useRouter } from "next/navigation";
-import { Member } from "@/types/member";
-import createClient from "@/app/utils/supabase/client";
+import { MemberCardProps } from "@/types/types";
+import { supabase } from "@/app/utils/supabase/client";
 import { useState, useEffect } from "react";
-interface MemberWithSimilarity extends Member {
-  similarityScore?: number;
-  similarityLoading?: boolean;
-}
-
-interface MemberCardProps {
-  member: MemberWithSimilarity;
-  loggedInUserId?: string;
-  showSimilarityScore?: boolean;
-  loggedInUser?: Member;
-}
 
 export default function MemberCard({
   member,
@@ -28,7 +17,6 @@ export default function MemberCard({
     undefined
   );
 
-  const supabase = createClient();
   const router = useRouter();
 
   const [isFriends, setIsFriends] = useState(false);
@@ -37,8 +25,13 @@ export default function MemberCard({
     const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
     const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
     const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
+    if (magnitudeA === 0 || magnitudeB === 0) {
+      return 0;
+    }
     return dotProduct / (magnitudeA * magnitudeB);
   }
+
+  //can we use useCallback here? otherwise this function object will get recreated at every render of the component.
 
   async function hasSimilarSkills(loggedInUserId: string, user2ID: string) {
     let max_learn_score = 0;
@@ -54,7 +47,6 @@ export default function MemberCard({
     loggedInUserData?.forEach((loggedInUserSkill) => {
       if (loggedInUserSkill.type === "learn" && loggedInUserSkill.embedding) {
         try {
-          // Parse embedding if it's a JSON string, otherwise use as-is
           const embedding =
             typeof loggedInUserSkill.embedding === "string"
               ? JSON.parse(loggedInUserSkill.embedding)
@@ -76,13 +68,11 @@ export default function MemberCard({
         loggedInUserSkill.type === "teach" &&
         loggedInUserSkill.embedding
       ) {
-        // Parse embedding if it's a JSON string, otherwise use as-is
         const embedding =
           typeof loggedInUserSkill.embedding === "string"
             ? JSON.parse(loggedInUserSkill.embedding)
             : loggedInUserSkill.embedding;
 
-        // Handle both array and object formats
         if (Array.isArray(embedding)) {
           loggedInUserTeachSkills.push(embedding);
         } else if (typeof embedding === "object" && embedding !== null) {
@@ -320,7 +310,6 @@ export default function MemberCard({
         .select("*")
         .or(
           `and(user1_id.eq.${user.id},user2_id.eq.${member.id}),and(user1_id.eq.${member.id},user2_id.eq.${user.id})`
-          //THIS SELECTS THE CONVO ID IF THE PAIRING EXISTS REGARDLESS OF ORDERING
         )
         .limit(1);
 
@@ -332,7 +321,6 @@ export default function MemberCard({
       let convoId = data?.[0]?.id;
 
       if (!data || data.length === 0) {
-        //if convo doesn't exist, create it
         const { data: newConvo, error: insertError } = await supabase
           .from("dm_conversations")
           .insert({ user1_id: user.id, user2_id: member.id })
@@ -370,7 +358,6 @@ export default function MemberCard({
 
   return (
     <div className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 p-6 relative">
-      {/* Similarity Score Badge */}
       {showSimilarityScore &&
         member.similarityScore !== undefined &&
         loggedInUserId !== member.id && (
@@ -385,7 +372,6 @@ export default function MemberCard({
           </div>
         )}
 
-      {/* Loading indicator for similarity calculation */}
       {showSimilarityScore && member.similarityLoading && (
         <div className="absolute top-3 right-3 z-10">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
@@ -417,7 +403,6 @@ export default function MemberCard({
             </div>
           )}
 
-        {/* Learning/Teaching Match Indicators */}
         {loggedInUserId !== member.id && (
           <div className="mb-3 space-y-1">
             {maxLearnScore !== undefined && maxLearnScore >= 0.7 && (

@@ -2,37 +2,15 @@
 import React, { useState, useEffect } from "react";
 import SearchBar from "./SearchBar";
 import MemberCards from "./MemberCards";
-import createClient from "@/app/utils/supabase/client";
+import { supabase } from "@/app/utils/supabase/client";
 import HomeButton from "@/components/homeButton";
-import { Member } from "@/types/member";
 import RefreshSimilarityButton from "./RefreshSimilarityButton";
-interface MemberWithSimilarity extends Member {
-  similarityScore?: number;
-  similarityLoading?: boolean;
-  maxLearnScore?: number;
-  maxTeachScore?: number;
-}
-interface LoggedInUser {
-  id: string;
-  email?: string;
-  displayName?: string;
-  profilePicUrl?: string;
-  completedOnboarding?: boolean;
-  teachingSkills: string[];
-  learningSkills: string[];
-  communicationStyle?: string;
-  timeZone?: string;
-  chronotype?: string;
-  availability: string[];
-  // These are used in hasSimilarSkills function
-  learning_embeddings?: number[][];
-  teaching_embeddings?: number[][];
-}
-
-interface UserWithEmbeddings {
-  learning_embeddings?: number[][];
-  teaching_embeddings?: number[][];
-}
+import {
+  MemberWithSimilarity,
+  LoggedInUser,
+  UserWithEmbeddings,
+} from "@/types/types";
+import { getFormattedUser } from "@/utils/userUtils";
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -42,10 +20,9 @@ export default function SearchPage() {
     new Map()
   );
   const [calculatingScores, setCalculatingScores] = useState(false);
-  const supabase = createClient();
 
   useEffect(() => {
-    getCurrentUser();
+    getFormattedUser(setLoggedInUser);
   }, []);
 
   useEffect(() => {
@@ -63,6 +40,7 @@ export default function SearchPage() {
       const { data, error } = await query.limit(20); // Limit to 20 results for performance
 
       if (error) {
+        alert(error);
         setMembers([]);
         return;
       }
@@ -79,7 +57,6 @@ export default function SearchPage() {
         const filteredData = loggedInUser
           ? formattedData.filter((member) => member.id !== loggedInUser.id)
           : formattedData;
-
         setMembers(filteredData);
 
         // Calculate similarity scores for new members
@@ -96,57 +73,15 @@ export default function SearchPage() {
     }
   }, [searchTerm, loggedInUser]);
 
-  const getCurrentUser = async () => {
-    try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError) {
-        alert(authError);
-        return;
-      }
-
-      if (user) {
-        const { data: userData, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        if (error) {
-          alert(error);
-          return;
-        }
-
-        if (userData) {
-          const formattedUser = {
-            id: userData.id,
-            email: userData.email,
-            displayName: userData.display_name,
-            profilePicUrl: userData.profile_pic_url,
-            completedOnboarding: userData.completed_onboarding,
-            teachingSkills: userData.teaching_skills || [],
-            learningSkills: userData.learning_skills || [],
-            communicationStyle: userData.communication_style,
-            timeZone: userData.time_zone,
-            chronotype: userData.chronotype,
-            availability: userData.availability || [],
-          };
-          setLoggedInUser(formattedUser);
-        }
-      }
-    } catch (error) {
-      alert(error);
-    }
-  };
   /// VIABLE / NON VIABLE MATCH LOGIC FOR MATCH (NOT SEARCH) PAGE
 
   function cosineSimilarity(vecA: number[], vecB: number[]): number {
     const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
     const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
     const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
+    if (magnitudeA === 0 || magnitudeB === 0) {
+      return 0;
+    }
     return dotProduct / (magnitudeA * magnitudeB);
   }
 

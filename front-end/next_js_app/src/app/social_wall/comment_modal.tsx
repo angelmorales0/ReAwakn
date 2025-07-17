@@ -4,15 +4,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
-
-interface CommentModalProps {
-  isModalOpen: boolean;
-  setIsModalOpen: (isOpen: boolean) => void;
-  handleSubmitComment: () => void;
-  comment: string;
-  setComment: (comment: string) => void;
-  comments?: Array<{ author_name: string | null; post_content: string }>;
-}
+import { CommentModalProps } from "@/types/types";
 
 export default function CommentModal({
   isModalOpen,

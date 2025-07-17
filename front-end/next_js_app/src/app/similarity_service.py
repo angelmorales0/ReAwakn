@@ -40,7 +40,7 @@ def preprocess_availability_data(df): # makes data format consistent
             try:
                 parsed = json.loads(availability)
                 availability_lists.append(parsed if isinstance(parsed, list) else [])
-            except:
+            except Exception as e:
                 try:
                     parsed = ast.literal_eval(availability)
                     availability_lists.append(parsed if isinstance(parsed, list) else [])

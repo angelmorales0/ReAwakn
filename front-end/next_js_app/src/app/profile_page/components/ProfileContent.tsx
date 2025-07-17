@@ -1,4 +1,4 @@
-import { UserProfile } from "@/types/user";
+import { UserProfile } from "@/types/types";
 import SkillSection from "./SkillSection";
 import HomeButton from "@/components/homeButton";
 
@@ -19,7 +19,7 @@ export default function ProfileContent({ profile }: ProfileContentProps) {
 
         <SkillSection
           title="Learning Skills"
-          skills={profile.teachingSkills}
+          skills={profile.learningSkills}
           icon="learning"
           emptyMessage="No learning skills added yet"
         />

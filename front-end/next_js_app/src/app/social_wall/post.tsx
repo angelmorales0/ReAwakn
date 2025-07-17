@@ -1,7 +1,7 @@
 "use client";
 import React, { use, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import createClient from "@/app/utils/supabase/client";
+import { supabase } from "@/app/utils/supabase/client";
 import CommentModal from "./comment_modal";
 
 type Post = {
@@ -24,7 +24,6 @@ export default function PostCard({ post, formatDate }: PostProps) {
   const [commentList, setCommentList] = useState<
     Array<{ author_name: string | null; post_content: string }>
   >([]);
-  const supabase = createClient();
   const [isAlreadyLiked, setIsAlreadyLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const getUser = async () => {

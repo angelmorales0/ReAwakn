@@ -1,127 +1,121 @@
-import { useState, useCallback } from 'react';
-
-interface SimilarUser {
-  userId: string;
-  score: number;
-}
-
-interface CompatibilityScore {
-  overall_similarity: number;
-  feature_breakdown: Record<string, number>;
-}
-
-interface UseSimilarityReturn {
-  similarity: number | null;
-  similarUsers: SimilarUser[];
-  compatibility: CompatibilityScore | null;
-  loading: boolean;
-  error: string | null;
-  calculateSimilarity: (loggedInUserId: string, targetUserId: string) => Promise<void>;
-  findSimilarUsers: (userId: string, topN?: number) => Promise<void>;
-  getDetailedCompatibility: (loggedInUserId: string, targetUserId: string) => Promise<void>;
-  clearResults: () => void;
-}
+import { useState, useCallback } from "react";
+import {
+  SimilarUser,
+  CompatibilityScore,
+  UseSimilarityReturn,
+} from "@/types/types";
 
 export function useSimilarity(): UseSimilarityReturn {
   const [similarity, setSimilarity] = useState<number | null>(null);
   const [similarUsers, setSimilarUsers] = useState<SimilarUser[]>([]);
-  const [compatibility, setCompatibility] = useState<CompatibilityScore | null>(null);
+  const [compatibility, setCompatibility] = useState<CompatibilityScore | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const calculateSimilarity = useCallback(async (loggedInUserId: string, targetUserId: string) => {
-    setLoading(true);
-    setError(null);
+  const calculateSimilarity = useCallback(
+    async (loggedInUserId: string, targetUserId: string) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const response = await fetch('/api/similarity', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          loggedInUserId,
-          targetUserId,
-          action: 'similarity',
-        }),
-      });
+      try {
+        const response = await fetch("/api/similarity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            loggedInUserId,
+            targetUserId,
+            action: "similarity",
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to calculate similarity');
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to calculate similarity");
+        }
+
+        setSimilarity(data.similarity);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setLoading(false);
       }
+    },
+    []
+  );
 
-      setSimilarity(data.similarity);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const findSimilarUsers = useCallback(
+    async (userId: string, topN: number = 10) => {
+      setLoading(true);
+      setError(null);
 
-  const findSimilarUsers = useCallback(async (userId: string, topN: number = 10) => {
-    setLoading(true);
-    setError(null);
+      try {
+        const response = await fetch("/api/similarity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            loggedInUserId: userId,
+            targetUserId: "", //TODO ENSURE TAKING THIS OUT WONT BREAK IT
+            action: "compatible_users",
+            topN,
+          }),
+        });
 
-    try {
-      const response = await fetch('/api/similarity', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          loggedInUserId: userId,
-          targetUserId: '', // Not needed for this action
-          action: 'compatible_users',
-          topN,
-        }),
-      });
+        const data = await response.json();
 
-      const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to find similar users");
+        }
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to find similar users');
+        setSimilarUsers(data.similarUsers || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setLoading(false);
       }
+    },
+    []
+  );
 
-      setSimilarUsers(data.similarUsers || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const getDetailedCompatibility = useCallback(
+    async (loggedInUserId: string, targetUserId: string) => {
+      setLoading(true);
+      setError(null);
 
-  const getDetailedCompatibility = useCallback(async (loggedInUserId: string, targetUserId: string) => {
-    setLoading(true);
-    setError(null);
+      try {
+        const response = await fetch("/api/similarity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            loggedInUserId,
+            targetUserId,
+            action: "detailed_compatibility",
+          }),
+        });
 
-    try {
-      const response = await fetch('/api/similarity', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          loggedInUserId,
-          targetUserId,
-          action: 'detailed_compatibility',
-        }),
-      });
+        const data = await response.json();
 
-      const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to get detailed compatibility");
+        }
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to get detailed compatibility');
+        setCompatibility(data.compatibility);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setLoading(false);
       }
-
-      setCompatibility(data.compatibility);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const clearResults = useCallback(() => {
     setSimilarity(null);

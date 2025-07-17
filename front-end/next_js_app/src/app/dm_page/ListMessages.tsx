@@ -1,18 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Message } from "@/types/types";
+import { ListOfMessages } from "@/types/types";
+import { supabase } from "@/app/utils/supabase/client";
 
-interface ListMessagesProps {
-  messages: Message[];
-}
-import createClient from "../utils/supabase/client";
-
-export default function ListMessages({ messages }: ListMessagesProps) {
-  const supabase = createClient();
+export default function ListMessages({ messages }: ListOfMessages) {
   const [userNames, setUserNames] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    const fetchUserNames = async () => {
+    const fetchUserNamesForMessages = async () => {
       const userIds = messages.map((message) => message.sent_by);
       const { data, error } = await supabase
         .from("users")
@@ -22,7 +17,6 @@ export default function ListMessages({ messages }: ListMessagesProps) {
       if (error) {
         return;
       }
-      // Creates a hashmap mapping user id to their display names
       const namesMap = data.reduce((acc: { [key: string]: string }, user) => {
         acc[user.id] = user.display_name;
         return acc;
@@ -31,7 +25,7 @@ export default function ListMessages({ messages }: ListMessagesProps) {
       setUserNames(namesMap);
     };
 
-    fetchUserNames();
+    fetchUserNamesForMessages();
   }, [messages]);
 
   return (

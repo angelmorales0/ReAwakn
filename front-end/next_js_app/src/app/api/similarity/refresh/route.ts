@@ -23,8 +23,7 @@ function runPythonScript(scriptPath: string, args: string[]): Promise<string> {
     });
 
     python.stderr.on("data", (data) => {
-      const dataStr = data.toString();
-      errorOutput += dataStr;
+      errorOutput += data.toString();
     });
 
     python.on("close", (code) => {
