@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: similarity_service.py",
+      "type": "meta-python",
+      "request": "launch",
+      "program": "${workspaceFolder}/front-end/next_js_app/src/app/similarity_service.py",
+      "console": "integratedTerminal",
+      "python": "/usr/local/bin/fbpython",
+      "env": {
+        "NEXT_PUBLIC_SUPABASE_URL": "https://ccmdvrihepflumovnoda.supabase.co",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjbWR2cmloZXBmbHVtb3Zub2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4MTUzNTgsImV4cCI6MjA2NjM5MTM1OH0.paNca6R95lmUoLq9hd9732PWMQSoPTY4XrYbWoS9CS4"
+      },
+      "cwd": "${workspaceFolder}/front-end/next_js_app/src/app"
+    }
+  ]
+}
