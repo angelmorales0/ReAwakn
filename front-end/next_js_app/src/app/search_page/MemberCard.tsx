@@ -2,6 +2,15 @@ import { useRouter } from "next/navigation";
 import { MemberCardProps } from "@/types/types";
 import { supabase } from "@/app/utils/supabase/client";
 import { useState, useEffect } from "react";
+import {
+  addToSkillsArray as addToCorrectSkillsArray,
+  findMaxLearnSimilarity,
+  findMaxTeachSimilarity,
+  checkFriendshipStatus,
+  getSimilarityColor,
+  getSimilarityLabel,
+} from "@/utils/memberCardUtils";
+import { getAuthUser } from "@/utils/userUtils";
 
 export default function MemberCard({
   member,
@@ -10,225 +19,64 @@ export default function MemberCard({
   loggedInUser,
 }: MemberCardProps) {
   const [isDisabled, setIsDisabled] = useState(false);
-  const [maxLearnScore, setMaxLearnScore] = useState<number | undefined>(
-    undefined
-  );
-  const [maxTeachScore, setMaxTeachScore] = useState<number | undefined>(
-    undefined
-  );
+  const [maxLearnScore, setMaxLearnScore] = useState<number>(0);
+  const [maxTeachScore, setMaxTeachScore] = useState<number>(0);
 
   const router = useRouter();
 
   const [isFriends, setIsFriends] = useState(false);
 
-  function cosineSimilarity(vecA: number[], vecB: number[]): number {
-    const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
-    const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
-    const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
-    if (magnitudeA === 0 || magnitudeB === 0) {
-      return 0;
-    }
-    return dotProduct / (magnitudeA * magnitudeB);
-  }
-
-  //can we use useCallback here? otherwise this function object will get recreated at every render of the component.
-
   async function hasSimilarSkills(loggedInUserId: string, user2ID: string) {
     let max_learn_score = 0;
     let max_teach_score = 0;
 
-    const { data: loggedInUserData } = await supabase
+    const { data: loggedInUserSkills } = await supabase
       .from("user_skills")
       .select("skill, type, embedding")
       .eq("user_id", loggedInUserId);
-
-    let loggedInUserLearnSkills: number[][] = [];
-    let loggedInUserTeachSkills: number[][] = [];
-    loggedInUserData?.forEach((loggedInUserSkill) => {
-      if (loggedInUserSkill.type === "learn" && loggedInUserSkill.embedding) {
-        try {
-          const embedding =
-            typeof loggedInUserSkill.embedding === "string"
-              ? JSON.parse(loggedInUserSkill.embedding)
-              : loggedInUserSkill.embedding;
-
-          if (Array.isArray(embedding)) {
-            loggedInUserLearnSkills.push(embedding);
-          } else if (typeof embedding === "object" && embedding !== null) {
-            const keys = Object.keys(embedding).sort(
-              (a, b) => Number(a) - Number(b)
-            );
-            const embeddingArray = keys.map((key) => embedding[key]);
-            loggedInUserLearnSkills.push(embeddingArray);
-          }
-        } catch (error) {
-          alert(error);
-        }
-      } else if (
-        loggedInUserSkill.type === "teach" &&
-        loggedInUserSkill.embedding
-      ) {
-        const embedding =
-          typeof loggedInUserSkill.embedding === "string"
-            ? JSON.parse(loggedInUserSkill.embedding)
-            : loggedInUserSkill.embedding;
-
-        if (Array.isArray(embedding)) {
-          loggedInUserTeachSkills.push(embedding);
-        } else if (typeof embedding === "object" && embedding !== null) {
-          const keys = Object.keys(embedding).sort(
-            (a, b) => Number(a) - Number(b)
-          );
-          const embeddingArray = keys.map((key) => embedding[key]);
-          loggedInUserTeachSkills.push(embeddingArray);
-        }
-      }
-    });
-
-    const { data: user2Data } = await supabase
+    const { data: user2Skills } = await supabase
       .from("user_skills")
       .select("skill, type, embedding")
       .eq("user_id", user2ID);
 
+    let loggedInUserLearnSkills: number[][] = [];
+    let loggedInUserTeachSkills: number[][] = [];
     let secondaryUserLearnSkills: number[][] = [];
     let secondaryUserTeachSkills: number[][] = [];
 
-    user2Data?.forEach((user2Skill) => {
-      if (user2Skill.type === "learn" && user2Skill.embedding) {
-        try {
-          const embedding =
-            typeof user2Skill.embedding === "string"
-              ? JSON.parse(user2Skill.embedding)
-              : user2Skill.embedding;
-
-          if (Array.isArray(embedding)) {
-            secondaryUserLearnSkills.push(embedding);
-          } else if (typeof embedding === "object" && embedding !== null) {
-            const keys = Object.keys(embedding).sort(
-              (a, b) => Number(a) - Number(b)
-            );
-            const embeddingArray = keys.map((key) => embedding[key]);
-            secondaryUserLearnSkills.push(embeddingArray);
-          }
-        } catch (error) {
-          alert(error);
-        }
-      } else if (user2Skill.type === "teach" && user2Skill.embedding) {
-        try {
-          const embedding =
-            typeof user2Skill.embedding === "string"
-              ? JSON.parse(user2Skill.embedding)
-              : user2Skill.embedding;
-
-          if (Array.isArray(embedding)) {
-            secondaryUserTeachSkills.push(embedding);
-          } else if (typeof embedding === "object" && embedding !== null) {
-            const keys = Object.keys(embedding).sort(
-              (a, b) => Number(a) - Number(b)
-            );
-            const embeddingArray = keys.map((key) => embedding[key]);
-            secondaryUserTeachSkills.push(embeddingArray);
-          }
-        } catch (error) {
-          alert(error);
-        }
-      }
+    loggedInUserSkills?.forEach((loggedInUserSkill) => {
+      addToCorrectSkillsArray(
+        loggedInUserSkill,
+        loggedInUserLearnSkills,
+        loggedInUserTeachSkills
+      );
     });
 
-    for (let i = 0; i < loggedInUserLearnSkills.length; i++) {
-      const loggedInLearnEmbedding = loggedInUserLearnSkills[i];
+    user2Skills?.forEach((user2Skill) => {
+      addToCorrectSkillsArray(
+        user2Skill,
+        secondaryUserLearnSkills,
+        secondaryUserTeachSkills
+      );
+    });
 
-      for (let j = 0; j < secondaryUserTeachSkills.length; j++) {
-        const otherUserTeachEmbedding = secondaryUserTeachSkills[j];
+    max_learn_score = findMaxLearnSimilarity(
+      loggedInUserLearnSkills,
+      secondaryUserTeachSkills
+    );
 
-        const similarity = cosineSimilarity(
-          loggedInLearnEmbedding,
-          otherUserTeachEmbedding
-        );
-
-        // Update max learning score if this similarity is higher
-        if (similarity > max_learn_score) {
-          max_learn_score = similarity;
-        }
-      }
-    }
-
-    for (let i = 0; i < loggedInUserTeachSkills.length; i++) {
-      for (let j = 0; j < secondaryUserLearnSkills.length; j++) {
-        const otherUserLearnEmbedding = secondaryUserLearnSkills[j];
-        const loggedInTeachEmbedding = loggedInUserTeachSkills[i];
-        const similarity = cosineSimilarity(
-          loggedInTeachEmbedding,
-          otherUserLearnEmbedding
-        );
-        if (similarity > max_teach_score) {
-          max_teach_score = similarity;
-        }
-      }
-    }
+    max_teach_score = findMaxTeachSimilarity(
+      loggedInUserTeachSkills,
+      secondaryUserLearnSkills
+    );
 
     return { max_learn_score, max_teach_score };
   }
 
-  const checkFriends = async () => {
-    try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError) {
-        alert(authError);
-        return;
-      }
-
-      const { data: isMutualFriends, error: rpcError } = await supabase.rpc(
-        "are_friends",
-        {
-          owner_id: user?.id,
-          friend_id: member.id,
-        }
-      );
-
-      if (rpcError) {
-        alert(rpcError);
-        return;
-      }
-
-      setIsFriends(isMutualFriends);
-
-      const { data, error: queryError } = await supabase
-        .from("friends")
-        .select("*")
-        .eq("owner", user?.id)
-        .eq("friend", member.id);
-
-      if (queryError) {
-        alert(queryError);
-        return;
-      }
-
-      if ((!isFriends && data && data.length > 0) || user?.id == member.id) {
-        setIsDisabled(true);
-      } else {
-        setIsDisabled(false);
-      }
-    } catch (error) {
-      alert(error);
-    }
-  };
-
-  useEffect(() => {
-    checkFriends();
-  }, [isFriends]);
-
-  // Calculate learning/teaching scores when component mounts
   useEffect(() => {
     const calculateLearningTeachingScores = async () => {
       if (!loggedInUser || loggedInUserId === member.id) return;
-
       try {
-        // Get member's full data with embeddings
         const { data: memberData } = await supabase
           .from("users")
           .select("*")
@@ -250,35 +98,17 @@ export default function MemberCard({
     };
 
     calculateLearningTeachingScores();
+    checkFriendshipStatus(member.id, setIsFriends, setIsDisabled);
   }, [loggedInUser, member.id]);
 
-  const handleConnect = async () => {
+  const sendConnectionRequest = async () => {
     try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError) {
-        alert(authError);
-        return;
-      }
-
-      if (!user?.id) {
-        alert("User not authenticated");
-        return;
-      }
-
-      const { error: insertError } = await supabase
+      const user = await getAuthUser();
+      await supabase
         .from("friends")
-        .insert({ owner: user.id, friend: member.id });
+        .insert({ owner: user?.id, friend: member.id });
 
-      if (insertError) {
-        alert(insertError);
-        return;
-      }
-
-      checkFriends();
+      await checkFriendshipStatus(member.id, setIsFriends, setIsDisabled);
     } catch (error) {
       alert(error);
     }
@@ -288,42 +118,24 @@ export default function MemberCard({
     router.push(`/profile_page?id=${id}`);
   };
 
-  const handleDM = async () => {
+  const enterDM = async () => {
     try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+      const user = await getAuthUser();
 
-      if (authError) {
-        alert(authError);
-        return;
-      }
-
-      if (!user?.id) {
-        alert("User not authenticated");
-        return;
-      }
-
-      const { data, error: queryError } = await supabase
+      const { data } = await supabase
         .from("dm_conversations")
         .select("*")
         .or(
-          `and(user1_id.eq.${user.id},user2_id.eq.${member.id}),and(user1_id.eq.${member.id},user2_id.eq.${user.id})`
+          `and(user1_id.eq.${user?.id},user2_id.eq.${member.id}),and(user1_id.eq.${member.id},user2_id.eq.${user?.id})`
         )
         .limit(1);
-
-      if (queryError) {
-        alert(queryError);
-        return;
-      }
 
       let convoId = data?.[0]?.id;
 
       if (!data || data.length === 0) {
         const { data: newConvo, error: insertError } = await supabase
           .from("dm_conversations")
-          .insert({ user1_id: user.id, user2_id: member.id })
+          .insert({ user1_id: user?.id, user2_id: member.id })
           .select();
 
         if (insertError) {
@@ -338,22 +150,6 @@ export default function MemberCard({
     } catch (error) {
       alert(error);
     }
-  };
-
-  const getSimilarityColor = (score: number) => {
-    if (score >= 0.8) return "bg-green-500";
-    if (score >= 0.6) return "bg-blue-500";
-    if (score >= 0.4) return "bg-yellow-500";
-    if (score >= 0.2) return "bg-orange-500";
-    return "bg-red-500";
-  };
-
-  const getSimilarityLabel = (score: number) => {
-    if (score >= 0.8) return "Excellent Match";
-    if (score >= 0.6) return "Great Match";
-    if (score >= 0.4) return "Good Match";
-    if (score >= 0.2) return "Fair Match";
-    return "Low Match";
   };
 
   return (
@@ -421,14 +217,14 @@ export default function MemberCard({
         <div className="w-full space-y-2">
           {isFriends ? (
             <button
-              onClick={handleDM}
+              onClick={enterDM}
               className="w-full px-4 py-2 text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 bg-blue-500 hover:bg-blue-600 focus:ring-blue-500"
             >
               DM
             </button>
           ) : (
             <button
-              onClick={handleConnect}
+              onClick={sendConnectionRequest}
               disabled={isDisabled}
               className={`w-full px-4 py-2 text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                 isDisabled

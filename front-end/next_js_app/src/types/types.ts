@@ -159,3 +159,9 @@ export interface CalendarEvent {
   resource?: { available: boolean };
   action?: string;
 }
+
+export interface UserSkill {
+  type: string;
+  embedding: string | Record<string, number> | number[];
+  skill: string;
+}

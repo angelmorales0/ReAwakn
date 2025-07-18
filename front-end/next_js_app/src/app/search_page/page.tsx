@@ -5,13 +5,12 @@ import MemberCards from "./MemberCards";
 import { supabase } from "@/app/utils/supabase/client";
 import HomeButton from "@/components/homeButton";
 import RefreshSimilarityButton from "./RefreshSimilarityButton";
-import {
-  MemberWithSimilarity,
-  LoggedInUser,
-  UserWithEmbeddings,
-} from "@/types/types";
+import { MemberWithSimilarity, LoggedInUser } from "@/types/types";
 import { getFormattedUser } from "@/utils/userUtils";
-
+import {
+  findMaxLearnSimilarity,
+  findMaxTeachSimilarity,
+} from "@/utils/memberCardUtils";
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [members, setMembers] = useState<MemberWithSimilarity[]>([]);
@@ -27,24 +26,18 @@ export default function SearchPage() {
 
   useEffect(() => {
     const fetchMembers = async () => {
-      let query = supabase
+      let users = supabase
         .from("users")
         .select("*")
         .eq("completed_onboarding", true);
 
-      // If there's a search term, filter by it, otherwise get all users
       if (searchTerm.trim() !== "") {
-        query = query.ilike("display_name", `${searchTerm}%`);
+        users = users.ilike("display_name", `${searchTerm}%`);
       }
 
-      const { data, error } = await query.limit(20); // Limit to 20 results for performance
+      const { data } = await users.limit(20);
 
-      if (error) {
-        alert(error);
-        setMembers([]);
-        return;
-      }
-
+      //make this tryc atch
       if (data) {
         const formattedData: MemberWithSimilarity[] = data.map((user) => ({
           id: user.id,
@@ -59,7 +52,6 @@ export default function SearchPage() {
           : formattedData;
         setMembers(filteredData);
 
-        // Calculate similarity scores for new members
         if (loggedInUser && filteredData.length > 0) {
           calculateSimilarityScores(filteredData);
         }
@@ -73,47 +65,6 @@ export default function SearchPage() {
     }
   }, [searchTerm, loggedInUser]);
 
-  /// VIABLE / NON VIABLE MATCH LOGIC FOR MATCH (NOT SEARCH) PAGE
-
-  function cosineSimilarity(vecA: number[], vecB: number[]): number {
-    const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
-    const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
-    const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
-    if (magnitudeA === 0 || magnitudeB === 0) {
-      return 0;
-    }
-    return dotProduct / (magnitudeA * magnitudeB);
-  }
-
-  function hasSimilarSkills(
-    userA: UserWithEmbeddings,
-    userB: UserWithEmbeddings
-  ) {
-    // FROM USER A'S PERSPECTIVE = LOGGED IN
-    let max_learn_score = 0;
-    let max_teach_score = 0;
-
-    for (const learnVec of userA.learning_embeddings || []) {
-      for (const teachVec of userB.teaching_embeddings || []) {
-        max_learn_score = Math.max(
-          max_learn_score,
-          cosineSimilarity(learnVec, teachVec)
-        );
-      }
-    }
-
-    for (const learnVec of userB.learning_embeddings || []) {
-      for (const teachVec of userA.teaching_embeddings || []) {
-        max_teach_score = Math.max(
-          max_teach_score,
-          cosineSimilarity(learnVec, teachVec)
-        );
-      }
-    }
-
-    return { max_learn_score, max_teach_score };
-  }
-
   const calculateSimilarityScores = async (
     membersToCalculate: MemberWithSimilarity[]
   ) => {
@@ -122,7 +73,6 @@ export default function SearchPage() {
     setCalculatingScores(true);
     const newScores = new Map(similarityScores);
 
-    // Get logged in user's full data with embeddings
     const { data: loggedInUserData } = await supabase
       .from("users")
       .select("*")
@@ -131,7 +81,6 @@ export default function SearchPage() {
 
     for (const member of membersToCalculate) {
       try {
-        // Get member's full data with embeddings
         const { data: memberData, error: memberError } = await supabase
           .from("users")
           .select("*")
@@ -143,14 +92,16 @@ export default function SearchPage() {
           continue;
         }
 
-        // Calculate learning/teaching scores
         if (loggedInUserData && memberData) {
-          const { max_learn_score, max_teach_score } = hasSimilarSkills(
+          const max_learn_score = findMaxLearnSimilarity(
+            loggedInUserData,
+            memberData
+          );
+          const max_teach_score = findMaxTeachSimilarity(
             loggedInUserData,
             memberData
           );
 
-          // Update member with learning/teaching scores
           const memberIndex = members.findIndex((m) => m.id === member.id);
           if (memberIndex !== -1) {
             setMembers((prevMembers) => {
@@ -167,7 +118,6 @@ export default function SearchPage() {
 
         try {
           const response = await fetch("/api/similarity", {
-            //ORIGINAL REQ TO SIMILARITY SERVICE
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -178,18 +128,10 @@ export default function SearchPage() {
               action: "similarity",
             }),
           });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API error: ${response.status} - ${errorText}`);
-          }
-
           const data = await response.json();
 
           if (data.similarity !== undefined) {
             newScores.set(member.id, data.similarity);
-          } else if (data.error) {
-            throw new Error(`API returned error: ${data.error}`);
           }
         } catch (fetchError) {
           alert(`Error calculating similarity: ${fetchError}`);
@@ -209,14 +151,12 @@ export default function SearchPage() {
     setSearchTerm(term);
   };
 
-  // Update similarity scores
   const membersWithScores = members.map((member) => ({
     ...member,
     similarityScore: similarityScores.get(member.id) || 0,
     similarityLoading: calculatingScores && !similarityScores.has(member.id),
   }));
 
-  // Sort by similarity scores
   const sortedMembers = membersWithScores.sort((a, b) => {
     if (a.similarityScore !== undefined && b.similarityScore !== undefined) {
       return b.similarityScore - a.similarityScore;
@@ -241,7 +181,6 @@ export default function SearchPage() {
 
           <RefreshSimilarityButton
             onRefreshComplete={() => {
-              // Clear existing similarity scores and recalculate
               setSimilarityScores(new Map());
               if (members.length > 0) {
                 calculateSimilarityScores(members);
