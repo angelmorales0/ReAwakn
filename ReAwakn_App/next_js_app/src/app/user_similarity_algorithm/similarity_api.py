@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-
-# Try relative import first, then fall back to direct import
 try:
     from .similarity_service import similarity_service
 except ImportError:
