@@ -171,3 +171,55 @@ export const getSimilarityLabel = (score: number): string => {
   if (score >= 0.2) return "Fair Match";
   return "Low Match";
 };
+
+export const calculateUserSimilarityScores = async (
+  loggedInUserId: string,
+  targetUserId: string
+) => {
+  try {
+    const { data: loggedInUserSkills } = await supabase
+      .from("user_skills")
+      .select("skill, type, embedding")
+      .eq("user_id", loggedInUserId);
+
+    const { data: targetUserSkills } = await supabase
+      .from("user_skills")
+      .select("skill, type, embedding")
+      .eq("user_id", targetUserId);
+
+    if (!loggedInUserSkills || !targetUserSkills) {
+      return { max_learn_score: 0, max_teach_score: 0 };
+    }
+
+    let loggedInUserLearnSkills: number[][] = [];
+    let loggedInUserTeachSkills: number[][] = [];
+    let targetUserLearnSkills: number[][] = [];
+    let targetUserTeachSkills: number[][] = [];
+
+    // Process logged-in user skills
+    loggedInUserSkills.forEach((skill) => {
+      addToSkillsArray(skill, loggedInUserLearnSkills, loggedInUserTeachSkills);
+    });
+
+    // Process target user skills
+    targetUserSkills.forEach((skill) => {
+      addToSkillsArray(skill, targetUserLearnSkills, targetUserTeachSkills);
+    });
+
+    // Calculate scores
+    const max_learn_score = findMaxLearnSimilarity(
+      loggedInUserLearnSkills,
+      targetUserTeachSkills
+    );
+
+    const max_teach_score = findMaxTeachSimilarity(
+      loggedInUserTeachSkills,
+      targetUserLearnSkills
+    );
+
+    return { max_learn_score, max_teach_score };
+  } catch (error) {
+    console.error("Error calculating scores:", error);
+    return { max_learn_score: 0, max_teach_score: 0 };
+  }
+};

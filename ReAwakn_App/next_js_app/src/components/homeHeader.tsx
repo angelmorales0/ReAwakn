@@ -19,6 +19,14 @@ export default function HomeHeader() {
       <Button
         variant="outline"
         onClick={() => {
+          router.push("/learn_page");
+        }}
+      >
+        Learning
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => {
           router.push("/profile_page");
         }}
       >
