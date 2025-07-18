@@ -62,21 +62,29 @@ export default function ScheduleMeetingPage() {
           .single();
 
         setTargetUser(targetUserData);
-
-        if (loggedInUserData && targetUserData) {
-          const slots = await findAvailableMeetingSlots(
-            loggedInUserData.id,
-            targetUserData.id
-          );
-          setAvailableSlots(slots);
-        }
       }
 
       setIsLoading(false);
     };
 
     fetchUsers();
-  }, [targetUserId, router, supabase, userTimeZone]);
+  }, [targetUserId, router]);
+
+  useEffect(() => {
+    const findAvailableSlots = async () => {
+      if (!loggedInUser || !targetUser || !userTimeZone) {
+        return;
+      }
+
+      const slots = await findAvailableMeetingSlots(
+        loggedInUser.id,
+        targetUser.id
+      );
+      setAvailableSlots(slots);
+    };
+
+    findAvailableSlots();
+  }, [loggedInUser, targetUser, userTimeZone]);
 
   const findAvailableMeetingSlots = async (
     hostId: string,
@@ -148,10 +156,52 @@ export default function ScheduleMeetingPage() {
     setIsModalOpen(true);
   };
 
-  const handleBookMeeting = async () => {
-    //TODO 1. Need to check if time slot has any conflicts on other users end,
-    //TODO if no conflicts add
-    //TODO if yes conflicts dont add
+  const bookMeeting = async ({ title }: { title: string }) => {
+    try {
+      if (!loggedInUser || !targetUser || !selectedSlot) {
+        throw new Error("Missing required information to book meeting");
+      }
+      const startTimeISO = new Date(selectedSlot.start).toISOString();
+      const { data: existingMeetings, error: conflictError } = await supabase
+        .from("meetings")
+        .select("*")
+        .or(
+          `and(host_id.eq.${loggedInUser.id},start_time.eq.${startTimeISO}),` +
+            `and(guest_id.eq.${loggedInUser.id},start_time.eq.${startTimeISO}),` +
+            `and(host_id.eq.${targetUser.id},start_time.eq.${startTimeISO}),` +
+            `and(guest_id.eq.${targetUser.id},start_time.eq.${startTimeISO})`
+        );
+
+      if (conflictError) {
+        console.log(conflictError);
+        throw new Error("Error checking for meeting conflicts");
+      }
+
+      if (existingMeetings && existingMeetings.length > 0) {
+        alert(
+          "This time slot is no longer available. Please select another time."
+        );
+        return;
+      }
+
+      const { error: insertError } = await supabase.from("meetings").insert({
+        host_id: loggedInUser.id,
+        guest_id: targetUser.id,
+        start_time: startTimeISO,
+        title: title,
+        is_confirmed: false,
+      });
+
+      if (insertError) {
+        throw new Error("Failed to schedule meeting");
+      }
+
+      alert("Meeting scheduled successfully!");
+      router.push("/");
+    } catch (error) {
+      console.log(error);
+      alert("Failed to schedule meeting. Please try again.");
+    }
   };
 
   if (isLoading) {
@@ -219,8 +269,8 @@ export default function ScheduleMeetingPage() {
                 timeslots={1}
                 defaultView="week"
                 views={["week"]}
-                min={new Date(0, 0, 0, 6, 0)} // 6am
-                max={new Date(0, 0, 0, 23, 0)} // 11pm
+                min={new Date(0, 0, 0, 6, 0)}
+                max={new Date(0, 0, 0, 23, 0)}
                 className="rounded-md"
                 eventPropGetter={() => ({
                   style: {
@@ -268,7 +318,7 @@ export default function ScheduleMeetingPage() {
           onClose={() => setIsModalOpen(false)}
           selectedSlot={selectedSlot}
           targetUser={targetUser}
-          onConfirm={handleBookMeeting}
+          onConfirm={bookMeeting}
         />
       )}
     </div>

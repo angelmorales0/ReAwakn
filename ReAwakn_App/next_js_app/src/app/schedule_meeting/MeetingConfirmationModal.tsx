@@ -7,25 +7,25 @@ export default function MeetingConfirmationModal({
   onClose,
   selectedSlot,
   targetUser,
-  onConfirm,
+  onConfirm: confrimMeeting,
 }: MeetingConfirmationModalProps) {
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      await onConfirm({
+      confrimMeeting({
         title,
-        description,
       });
+
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error submitting form:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -73,26 +73,9 @@ export default function MeetingConfirmationModal({
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                 placeholder="e.g., Coffee Chat, Mentoring Session"
                 required
-              />
-            </div>
-
-            <div className="mb-6">
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Description (Optional)
-              </label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="What would you like to discuss?"
-                rows={3}
               />
             </div>
 

@@ -35,6 +35,14 @@ export default function HomeHeader() {
       <Button
         variant="outline"
         onClick={() => {
+          router.push("/meetings");
+        }}
+      >
+        Meetings
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => {
           router.push("/create_post");
         }}
       >
