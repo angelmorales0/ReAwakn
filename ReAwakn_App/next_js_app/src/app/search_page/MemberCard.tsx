@@ -18,13 +18,14 @@ export default function MemberCard({
   showSimilarityScore = false,
   loggedInUser,
 }: MemberCardProps) {
-  const [isDisabled, setIsDisabled] = useState(false);
+  const [isDisabled, disableConnectionButton] = useState(false);
   const [maxLearnScore, setMaxLearnScore] = useState<number>(0);
   const [maxTeachScore, setMaxTeachScore] = useState<number>(0);
 
   const router = useRouter();
 
   const [isFriends, setIsFriends] = useState(false);
+  const [isPendingRequest, setIsPendingRequest] = useState(false);
 
   async function hasSimilarSkills(loggedInUserId: string, user2ID: string) {
     let max_learn_score = 0;
@@ -98,7 +99,12 @@ export default function MemberCard({
     };
 
     calculateLearningTeachingScores();
-    checkFriendshipStatus(member.id, setIsFriends, setIsDisabled);
+    checkFriendshipStatus(
+      member.id,
+      setIsFriends,
+      disableConnectionButton,
+      setIsPendingRequest
+    );
   }, [loggedInUser, member.id]);
 
   const sendConnectionRequest = async () => {
@@ -108,7 +114,12 @@ export default function MemberCard({
         .from("friends")
         .insert({ owner: user?.id, friend: member.id });
 
-      await checkFriendshipStatus(member.id, setIsFriends, setIsDisabled);
+      await checkFriendshipStatus(
+        member.id,
+        setIsFriends,
+        disableConnectionButton,
+        setIsPendingRequest
+      );
     } catch (error) {
       alert(error);
     }
@@ -167,6 +178,14 @@ export default function MemberCard({
             </div>
           </div>
         )}
+
+      {isPendingRequest && (
+        <div className="absolute top-3 left-3 z-10">
+          <div className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+            Pending Request
+          </div>
+        </div>
+      )}
 
       {showSimilarityScore && member.similarityLoading && (
         <div className="absolute top-3 right-3 z-10">
