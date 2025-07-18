@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import createClient from "@/app/utils/supabase/client";
+import { supabase } from "@/app/utils/supabase/client";
 import PostCard from "./post";
 
 type Post = {
@@ -15,7 +15,6 @@ type Post = {
 export default function SocialWall() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   const getPosts = async () => {
     setLoading(true);

@@ -1,24 +1,6 @@
 import React, { useState } from "react";
 import moment from "moment";
-
-interface MeetingConfirmationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  selectedSlot: {
-    start: Date;
-    end: Date;
-  };
-  targetUser: {
-    id: string;
-    name?: string;
-    display_name?: string;
-    email?: string;
-  };
-  onConfirm: (meetingDetails: {
-    title: string;
-    description: string;
-  }) => void;
-}
+import { MeetingConfirmationModalProps } from "@/types/types";
 
 export default function MeetingConfirmationModal({
   isOpen,
@@ -44,7 +26,6 @@ export default function MeetingConfirmationModal({
       });
       onClose();
     } catch (error) {
-      console.error("Error confirming meeting:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -66,19 +47,25 @@ export default function MeetingConfirmationModal({
 
           <div className="mb-4">
             <p className="text-gray-600">
-              <span className="font-medium">With:</span> {targetUser.name || targetUser.display_name}
+              <span className="font-medium">With:</span>{" "}
+              {targetUser.name || targetUser.display_name}
             </p>
             <p className="text-gray-600">
-              <span className="font-medium">Date:</span> {formatDate(selectedSlot.start)}
+              <span className="font-medium">Date:</span>{" "}
+              {formatDate(selectedSlot.start)}
             </p>
             <p className="text-gray-600">
-              <span className="font-medium">Time:</span> {formatTime(selectedSlot.start)} - {formatTime(selectedSlot.end)}
+              <span className="font-medium">Time:</span>{" "}
+              {formatTime(selectedSlot.start)} - {formatTime(selectedSlot.end)}
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Meeting Title
               </label>
               <input
@@ -93,7 +80,10 @@ export default function MeetingConfirmationModal({
             </div>
 
             <div className="mb-6">
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Description (Optional)
               </label>
               <textarea

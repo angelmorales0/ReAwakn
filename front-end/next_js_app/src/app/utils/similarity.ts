@@ -110,16 +110,3 @@ export function isGoodTeachingMatch(
   );
   return similarity >= threshold;
 }
-
-/**
- * Example usage:
- *
- * const skill1 = {"0": 110, "1": 115, "2": 97, "3": 99, "4": 97, "5": 114};
- * const skill2 = {"0": 110, "1": 115, "2": 97, "3": 99, "4": 97, "5": 114};
- *
- * const similarity = calculateEmbeddingSimilarity(skill1, skill2);
- * console.log(`Similarity: ${similarity}`); // 1.0 (identical)
- *
- * const isGoodMatch = isGoodTeachingMatch(skill1, skill2);
- * console.log(`Good teaching match: ${isGoodMatch}`); // true
- */

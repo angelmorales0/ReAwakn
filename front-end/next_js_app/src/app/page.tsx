@@ -54,12 +54,10 @@ export default function Home() {
       </div>
 
       <div className="flex gap-6 relative">
-        {/* Social Wall - Main Content */}
         <div className="flex-1">
           <SocialWall />
         </div>
 
-        {/* Top Matches Sidebar */}
         <div className="fixed top-50 right-6 w-[300px]">
           <TopMatchesSidebar />
         </div>

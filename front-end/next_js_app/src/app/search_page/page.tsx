@@ -2,29 +2,27 @@
 import React, { useState, useEffect } from "react";
 import SearchBar from "./SearchBar";
 import MemberCards from "./MemberCards";
-import createClient from "@/app/utils/supabase/client";
+import { supabase } from "@/app/utils/supabase/client";
 import HomeButton from "@/components/homeButton";
-import { Member } from "@/types/member";
 import RefreshSimilarityButton from "./RefreshSimilarityButton";
-interface MemberWithSimilarity extends Member {
-  similarityScore?: number;
-  similarityLoading?: boolean;
-  maxLearnScore?: number;
-  maxTeachScore?: number;
-}
+import {
+  MemberWithSimilarity,
+  LoggedInUser,
+  UserWithEmbeddings,
+} from "@/types/types";
+import { getFormattedUser } from "@/utils/userUtils";
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [members, setMembers] = useState<MemberWithSimilarity[]>([]);
-  const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const [loggedInUser, setLoggedInUser] = useState<LoggedInUser | null>(null);
   const [similarityScores, setSimilarityScores] = useState<Map<string, number>>(
     new Map()
   );
   const [calculatingScores, setCalculatingScores] = useState(false);
-  const supabase = createClient();
 
   useEffect(() => {
-    getCurrentUser();
+    getFormattedUser(setLoggedInUser);
   }, []);
 
   useEffect(() => {
@@ -42,6 +40,7 @@ export default function SearchPage() {
       const { data, error } = await query.limit(20); // Limit to 20 results for performance
 
       if (error) {
+        alert(error);
         setMembers([]);
         return;
       }
@@ -58,7 +57,6 @@ export default function SearchPage() {
         const filteredData = loggedInUser
           ? formattedData.filter((member) => member.id !== loggedInUser.id)
           : formattedData;
-
         setMembers(filteredData);
 
         // Calculate similarity scores for new members
@@ -75,47 +73,22 @@ export default function SearchPage() {
     }
   }, [searchTerm, loggedInUser]);
 
-  const getCurrentUser = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { data: userData, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        if (!error && userData) {
-          const formattedUser = {
-            id: userData.id,
-            email: userData.email,
-            displayName: userData.display_name,
-            profilePicUrl: userData.profile_pic_url,
-            completedOnboarding: userData.completed_onboarding,
-            teachingSkills: userData.teaching_skills || [],
-            learningSkills: userData.learning_skills || [],
-            communicationStyle: userData.communication_style,
-            timeZone: userData.time_zone,
-            chronotype: userData.chronotype,
-            availability: userData.availability || [],
-          };
-          setLoggedInUser(formattedUser);
-        }
-      }
-    } catch (error) {}
-  };
   /// VIABLE / NON VIABLE MATCH LOGIC FOR MATCH (NOT SEARCH) PAGE
 
   function cosineSimilarity(vecA: number[], vecB: number[]): number {
     const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
     const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
     const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
+    if (magnitudeA === 0 || magnitudeB === 0) {
+      return 0;
+    }
     return dotProduct / (magnitudeA * magnitudeB);
   }
 
-  function hasSimilarSkills(userA: any, userB: any) {
+  function hasSimilarSkills(
+    userA: UserWithEmbeddings,
+    userB: UserWithEmbeddings
+  ) {
     // FROM USER A'S PERSPECTIVE = LOGGED IN
     let max_learn_score = 0;
     let max_teach_score = 0;
@@ -159,11 +132,16 @@ export default function SearchPage() {
     for (const member of membersToCalculate) {
       try {
         // Get member's full data with embeddings
-        const { data: memberData } = await supabase
+        const { data: memberData, error: memberError } = await supabase
           .from("users")
           .select("*")
           .eq("id", member.id)
           .single();
+
+        if (memberError) {
+          alert(`Error fetching member data: ${memberError.message}`);
+          continue;
+        }
 
         // Calculate learning/teaching scores
         if (loggedInUserData && memberData) {
@@ -187,25 +165,38 @@ export default function SearchPage() {
           }
         }
 
-        const response = await fetch("/api/similarity", {
-          //ORIGINAL REQ TO SIMILARITY SERVICE
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            loggedInUserId: loggedInUser.id,
-            targetUserId: member.id,
-            action: "similarity",
-          }),
-        });
+        try {
+          const response = await fetch("/api/similarity", {
+            //ORIGINAL REQ TO SIMILARITY SERVICE
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              loggedInUserId: loggedInUser.id,
+              targetUserId: member.id,
+              action: "similarity",
+            }),
+          });
 
-        const data = await response.json();
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.status} - ${errorText}`);
+          }
 
-        if (response.ok && data.similarity !== undefined) {
-          newScores.set(member.id, data.similarity);
+          const data = await response.json();
+
+          if (data.similarity !== undefined) {
+            newScores.set(member.id, data.similarity);
+          } else if (data.error) {
+            throw new Error(`API returned error: ${data.error}`);
+          }
+        } catch (fetchError) {
+          alert(`Error calculating similarity: ${fetchError}`);
+          newScores.set(member.id, 0);
         }
       } catch (error) {
+        alert(`Error processing member: ${error}`);
         newScores.set(member.id, 0);
       }
     }
@@ -286,7 +277,11 @@ export default function SearchPage() {
           members={sortedMembers}
           loggedInUserId={loggedInUser?.id || ""}
           showSimilarityScores={true}
-          loggedInUser={loggedInUser}
+          loggedInUser={
+            loggedInUser
+              ? { ...loggedInUser, name: loggedInUser.displayName || "" }
+              : undefined
+          }
         />
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import createClient from "@/app/utils/supabase/client";
+import React, { useState } from "react";
+import { supabase } from "@/app/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -12,13 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-type Post = {
-  created_at: string; // or Date
-  author_id: string;
-  title: string;
-  caption: string;
-};
+import { getAuthUser } from "@/utils/userUtils";
 
 export default function CreatePost() {
   const [title, setTitle] = useState("");
@@ -26,21 +20,11 @@ export default function CreatePost() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
-  const supabase = createClient();
-
-  const getCurrentUser = async () => {
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    return user;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const user = await getCurrentUser();
+    const user = await getAuthUser();
     if (!user) {
       alert("You must be logged in to create a post");
       router.push("/login");
@@ -56,15 +40,14 @@ export default function CreatePost() {
         author_name: user.user_metadata.user_name,
       },
     ]);
-
-    if (error) throw error;
+    if (error) {
+      alert(error.message);
+    } else {
+      alert("Post created successfully");
+    }
 
     router.push("/");
   };
-
-  useEffect(() => {
-    getCurrentUser();
-  }, []);
 
   return (
     <div className="container mx-auto py-8 max-w-md">

@@ -1,7 +1,4 @@
-interface SearchBarProps {
-  onSearchChange: (searchTerm: string) => void;
-  searchTerm: string;
-}
+import { SearchBarProps } from "@/types/types";
 
 export default function SearchBar({
   onSearchChange,

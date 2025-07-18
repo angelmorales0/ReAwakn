@@ -2,29 +2,16 @@
 
 import React from "react";
 import { Input } from "@/components/ui/input";
-import createClient from "@/app/utils/supabase/client";
+import { supabase } from "@/app/utils/supabase/client";
 import { toast } from "sonner";
+import { getAuthUser } from "@/utils/userUtils";
 
-interface ChatInputProps {
-  onMessageSent: () => void;
-}
-
-export default function ChatInput({ onMessageSent }: ChatInputProps) {
-  const supabase = createClient();
-
+export default function ChatInput({ refreshMessages }: { refreshMessages: () => void }) {
   const sendMessage = async (text: string) => {
     const searchParams = new URLSearchParams(window.location.search);
     const convo_id = searchParams.get("id");
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError) {
-      toast.error("Authentication error");
-      return;
-    }
+    const user = await getAuthUser();
 
     if (!user) {
       toast.error("You must be logged in to send messages");
@@ -41,9 +28,10 @@ export default function ChatInput({ onMessageSent }: ChatInputProps) {
       toast.error(`Error: ${error.message}`);
     } else {
       toast.success("Message sent!");
-      onMessageSent(); // Refresh the messages list
+      refreshMessages();
     }
   };
+  
   return (
     <div className="p-5">
       <Input

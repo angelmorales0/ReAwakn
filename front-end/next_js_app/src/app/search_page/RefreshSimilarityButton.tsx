@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { toast } from "sonner";
 
 interface RefreshSimilarityButtonProps {
   onRefreshComplete?: () => void;
@@ -21,12 +22,21 @@ export default function RefreshSimilarityButton({
       });
 
       if (response.ok) {
+        toast.success("Similarity data refreshed successfully");
         if (onRefreshComplete) {
           onRefreshComplete();
         }
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(
+          errorData.message ||
+            "Failed to refresh similarity data. Please try again."
+        );
       }
     } catch (error) {
+      toast.error(
+        "An error occurred while refreshing similarity data. Please try again."
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -50,7 +60,7 @@ export default function RefreshSimilarityButton({
             <span>Refreshing...</span>
           </div>
         ) : (
-          "Refresh Similarity Data"
+          "Refresh User Similarity"
         )}
       </button>
     </div>
