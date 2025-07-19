@@ -1,32 +1,6 @@
 import React, { useEffect, useState } from "react";
-import moment from "moment-timezone";
 import { getAuthUser } from "@/utility_methods/userUtils";
-
-interface MeetingDetailsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  meeting: {
-    id: string;
-    title: string;
-    start: Date;
-    end: Date;
-    host_id: string;
-    guest_id: string;
-    is_confirmed: boolean;
-    host?: {
-      display_name?: string;
-      name?: string;
-      email?: string;
-    };
-    guest?: {
-      display_name?: string;
-      name?: string;
-      email?: string;
-    };
-  };
-  onConfirm: (meetingId: string) => void;
-  onCancel: (meetingId: string) => void;
-}
+import { MeetingDetailsModalProps } from "@/types/types";
 
 export default function MeetingDetailsModal({
   isOpen,
@@ -52,16 +26,7 @@ export default function MeetingDetailsModal({
 
   if (!isOpen) return null;
 
-  const formatDate = (date: Date) => {
-    return moment(date).format("dddd, MMMM D, YYYY");
-  };
-
-  const formatTime = (date: Date) => {
-    return moment(date).format("h:mm A");
-  };
-
   const hostName = meeting.host?.display_name;
-  const guestName = meeting.guest?.display_name;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -84,18 +49,7 @@ export default function MeetingDetailsModal({
 
           <div className="mb-6">
             <p className="text-black mb-2">
-              <span className="font-medium">Date:</span>{" "}
-              {formatDate(meeting.start)}
-            </p>
-            <p className="text-black mb-2">
-              <span className="font-medium">Time:</span>{" "}
-              {formatTime(meeting.start)} - {formatTime(meeting.end)}
-            </p>
-            <p className="text-black mb-2">
               <span className="font-medium">Host:</span> {hostName}
-            </p>
-            <p className="text-black mb-2">
-              <span className="font-medium">Guest:</span> {guestName}
             </p>
           </div>
 

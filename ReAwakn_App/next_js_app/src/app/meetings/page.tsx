@@ -1,63 +1,27 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment-timezone";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { supabase } from "@/app/utils/supabase/client";
 import { getAuthUser } from "@/utility_methods/userUtils";
 import MeetingDetailsModal from "./MeetingDetailsModal";
+import { Meeting, CalendarMeeting } from "@/types/types";
 
 const localizer = momentLocalizer(moment);
 
-interface Meeting {
-  id: string;
-  host_id: string;
-  guest_id: string;
-  start_time: string;
-  title: string;
-  is_confirmed: boolean;
-  host?: {
-    display_name?: string;
-    name?: string;
-    email?: string;
-  };
-  guest?: {
-    display_name?: string;
-    name?: string;
-    email?: string;
-  };
-}
-
-interface CalendarMeeting {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  host_id: string;
-  guest_id: string;
-  is_confirmed: boolean;
-  host?: {
-    display_name?: string;
-    name?: string;
-    email?: string;
-  };
-  guest?: {
-    display_name?: string;
-    name?: string;
-    email?: string;
-  };
-}
-
 export default function MeetingsPage() {
+  const router = useRouter();
   const [meetings, setMeetings] = useState<CalendarMeeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] =
     useState<CalendarMeeting | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  const router = useRouter();
-
+  const [loggedInUserData, setLoggedInUserData] = useState(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const userTimezone = useUserTimezone(loggedInUserData);
   const fetchMeetings = async () => {
     setIsLoading(true);
     try {
@@ -76,9 +40,19 @@ export default function MeetingsPage() {
 
       if (meetingsData) {
         const calendarMeetings = meetingsData.map((meeting: Meeting) => {
-          const startTime = new Date(meeting.start_time);
-          const endTime = new Date(startTime);
-          endTime.setHours(startTime.getHours() + 1);
+          let timezone = userTimezone;
+
+          if (meeting.scheduler_timezone && meeting.host_id === user?.id) {
+            timezone = meeting.scheduler_timezone;
+          }
+
+          const startMoment = moment.tz(meeting.start_time, timezone);
+          const endMoment = moment
+            .tz(meeting.start_time, timezone)
+            .add(1, "hour");
+
+          const startTime = startMoment.toDate();
+          const endTime = endMoment.toDate();
 
           return {
             id: meeting.id,
@@ -90,6 +64,7 @@ export default function MeetingsPage() {
             is_confirmed: meeting.is_confirmed,
             host: meeting.host,
             guest: meeting.guest,
+            scheduler_timezone: meeting.scheduler_timezone,
           };
         });
 
@@ -103,10 +78,29 @@ export default function MeetingsPage() {
   };
 
   useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = await getAuthUser();
+        if (user) {
+          const { data } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+
+          setLoggedInUserData(data);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
     fetchMeetings();
   }, []);
 
   const selectMeeting = (event: CalendarMeeting) => {
+    console.log(event);
     setSelectedMeeting(event);
     setIsModalOpen(true);
   };
@@ -175,11 +169,39 @@ export default function MeetingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 text-black">
-      <h1 className="text-2xl font-bold mb-6 text-black">My Meetings</h1>
+      <h1 className="text-2xl font-bold mb-4 text-black">My Meetings</h1>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 flex items-center">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-blue-500 mr-2"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+            clipRule="evenodd"
+          />
+        </svg>
+        <div>
+          <p className="text-sm text-blue-700">
+            <span className="font-medium">Your time zone:</span> {userTimezone}
+          </p>
+        </div>
+      </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-black">Meeting Calendar</h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => router.push("/")}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Back Home
+            </button>
+          </div>
         </div>
 
         <div className="flex mb-4">
@@ -204,14 +226,19 @@ export default function MeetingsPage() {
               eventPropGetter={calendarCSS}
               defaultView="week"
               views={["month", "week", "day"]}
-              min={new Date(0, 0, 0, 6, 0)} // 6 AM
-              max={new Date(0, 0, 0, 23, 0)} // 11 PM
+              date={currentDate}
+              onNavigate={(date) => setCurrentDate(date)}
+              min={new Date(0, 0, 0, 6, 0)}
+              max={new Date(0, 0, 0, 23, 0)}
               formats={{
-                timeGutterFormat: (date: Date) => moment(date).format("h A"),
+                timeGutterFormat: (date: Date) =>
+                  moment(date).tz(userTimezone).format("h A"),
                 eventTimeRangeFormat: (range) => {
-                  return `${moment(range.start).format("h:mm A")} - ${moment(
-                    range.end
-                  ).format("h:mm A")}`;
+                  return `${moment(range.start)
+                    .tz(userTimezone)
+                    .format("h:mm A")} - ${moment(range.end)
+                    .tz(userTimezone)
+                    .format("h:mm A")}`;
                 },
               }}
             />

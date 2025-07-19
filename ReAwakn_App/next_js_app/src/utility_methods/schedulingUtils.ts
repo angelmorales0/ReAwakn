@@ -66,15 +66,17 @@ export function convertToCalendarEvents(
   const events = [];
   const startDate = new Date();
 
+  const endDate = new Date();
+  endDate.setMonth(endDate.getMonth() + 1);
+
   const timezone = getIANATimezone(userTimeZone);
 
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(startDate);
-    day.setDate(startDate.getDate() + i);
-
-    // Skips weekends
+  for (
+    let day = new Date(startDate);
+    day <= endDate;
+    day.setDate(day.getDate() + 1)
+  ) {
     if (day.getDay() === 0 || day.getDay() === 6) continue;
-
     for (const slot of timeSlots) {
       const [startTime, endTime] = slot.split(" - ");
       const [startHours, startMinutes] = startTime.split(":").map(Number);
@@ -98,7 +100,9 @@ export function convertToCalendarEvents(
         millisecond: 0,
       });
 
+      console.log(utcStart, "UTC");
       const localStart = utcStart.clone().tz(timezone);
+      console.log(localStart, "LOCAL");
       const localEnd = utcEnd.clone().tz(timezone);
 
       let slotStart = localStart.clone();

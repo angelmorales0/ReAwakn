@@ -7,16 +7,16 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import { supabase } from "@/app/utils/supabase/client";
 import MeetingConfirmationModal from "./MeetingConfirmationModal";
 import {
-  getIANATimezone,
   findOverlappingTimeSlots,
   convertToCalendarEvents,
 } from "@/utility_methods/schedulingUtils";
 import { CalendarUser, CalendarEvent } from "@/types/types";
 import { getAuthUser } from "@/utility_methods/userUtils";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { start } from "repl";
 const localizer = momentLocalizer(moment);
 
 export default function ScheduleMeetingPage() {
-  const [userTimeZone, setUserTimeZone] = useState<string>("");
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetUserId = searchParams.get("userId");
@@ -28,12 +28,9 @@ export default function ScheduleMeetingPage() {
   const [selectedSlot, setSelectedSlot] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  useEffect(() => {
-    const userTimezone = loggedInUser?.time_zone || "";
-    const ianaTimezone = getIANATimezone(userTimezone);
-    setUserTimeZone(ianaTimezone);
-  }, [loggedInUser]);
+  const userTimeZone = useUserTimezone(loggedInUser);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -161,7 +158,26 @@ export default function ScheduleMeetingPage() {
       if (!loggedInUser || !targetUser || !selectedSlot) {
         throw new Error("Missing required information to book meeting");
       }
-      const startTimeISO = new Date(selectedSlot.start).toISOString();
+
+      const startTimeISO = selectedSlot.startUTC
+        ? moment.utc(selectedSlot.startUTC).toISOString()
+        : moment.utc(selectedSlot.start).toISOString();
+      const localMoment = moment.utc(startTimeISO).tz(userTimeZone);
+      console.log(userTimeZone);
+      console.log(localMoment, "LOCAL:");
+      function localToUTCDBFormat(
+        dateStr: string,
+        timeStr: string,
+        tz: string
+      ): string {
+        return moment
+          .tz(`${dateStr} ${timeStr}`, "YYYY-MM-DD HH:mm", tz)
+          .utc()
+          .format("YYYY-MM-DD HH:mm:ss[+00]");
+      }
+
+      console.log(startTimeISO);
+
       const { data: existingMeetings, error: conflictError } = await supabase
         .from("meetings")
         .select("*")
@@ -184,17 +200,13 @@ export default function ScheduleMeetingPage() {
         return;
       }
 
-      const { error: insertError } = await supabase.from("meetings").insert({
+      await supabase.from("meetings").insert({
         host_id: loggedInUser.id,
         guest_id: targetUser.id,
         start_time: startTimeISO,
         title: title,
         is_confirmed: false,
       });
-
-      if (insertError) {
-        throw new Error("Failed to schedule meeting");
-      }
 
       alert("Meeting scheduled successfully!");
       router.push("/");
@@ -214,6 +226,27 @@ export default function ScheduleMeetingPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <style jsx global>{`
+        .rbc-calendar {
+          color: black !important;
+        }
+        .rbc-event-content {
+          color: white !important; /* Keep event text white for contrast */
+        }
+        .rbc-header,
+        .rbc-label,
+        .rbc-toolbar-label,
+        .rbc-time-content,
+        .rbc-time-view {
+          color: black !important;
+        }
+        .rbc-toolbar button {
+          color: black !important;
+        }
+        .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+          color: black !important;
+        }
+      `}</style>
       <h1 className="text-2xl font-bold mb-4">
         Schedule a Meeting with {targetUser?.name || targetUser?.display_name}
       </h1>
@@ -234,13 +267,13 @@ export default function ScheduleMeetingPage() {
         <div>
           <p className="text-sm text-blue-700">
             <span className="font-medium">Your time zone:</span>{" "}
-            {loggedInUser?.time_zone || "Local timezone"}
+            {userTimeZone || "Local timezone"}
           </p>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <p className="mb-4">
+        <p className="mb-4 text-black">
           Select an available time slot to schedule a 1-hour meeting. Available
           slots are shown in the calendar below.
         </p>
@@ -262,16 +295,16 @@ export default function ScheduleMeetingPage() {
                 }))}
                 startAccessor="start"
                 endAccessor="end"
-                selectable
-                onSelectSlot={handleSelectSlot}
                 onSelectEvent={handleSelectEvent}
                 step={60}
                 timeslots={1}
                 defaultView="week"
-                views={["week"]}
+                views={["month", "week"]}
+                date={currentDate}
+                onNavigate={(date) => setCurrentDate(date)}
                 min={new Date(0, 0, 0, 6, 0)}
                 max={new Date(0, 0, 0, 23, 0)}
-                className="rounded-md"
+                className="rounded-md text-black calendar-black-text"
                 eventPropGetter={() => ({
                   style: {
                     backgroundColor: "#4CAF50",
