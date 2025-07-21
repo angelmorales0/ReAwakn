@@ -1,5 +1,5 @@
 "use client";
-import React, { use, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/app/utils/supabase/client";
 import CommentModal from "./comment_modal";
@@ -191,7 +191,12 @@ export default function PostCard({ post, formatDate }: PostProps) {
     }
   };
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 transform hover:-translate-y-1">
+    <div
+      className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 transform hover:-translate-y-1 ${
+        isAlreadyLiked ? "cursor-broken-heart" : "cursor-heart"
+      }`}
+      onDoubleClick={handleLike}
+    >
       <div className="flex items-center p-4 border-b border-gray-100">
         {post.author_profile_pic ? (
           <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden">
