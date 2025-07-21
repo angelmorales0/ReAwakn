@@ -18,6 +18,8 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.2",
+    "@tensorflow-models/universal-sentence-encoder": "^1.3.3",
+    "@tensorflow/tfjs": "^4.22.0",
     "@types/moment": "^2.11.29",
     "@types/react-big-calendar": "^1.16.2",
     "class-variance-authority": "^0.7.1",

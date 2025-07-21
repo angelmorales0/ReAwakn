@@ -69,7 +69,9 @@ export function useMemberInteractions(memberId: string) {
         convoId = newConvo?.[0]?.id;
       }
 
-      router.push(`/dm_page?id=${convoId}&user=${memberName}`);
+      router.push(
+        `/dm_page?id=${convoId}&user=${memberName}&userId=${memberId}`
+      );
     } catch (error) {
       alert(error);
     }

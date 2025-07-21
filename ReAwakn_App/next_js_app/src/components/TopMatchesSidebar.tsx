@@ -1,177 +1,43 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/app/utils/supabase/client";
+import supabase from "@/app/utils/supabase/client";
 import { MatchUser } from "@/types/types";
+import { calculateUserSimilarityScores } from "@/utility_methods/memberCardUtils";
+import { getAuthUser } from "@/utility_methods/userUtils";
 
 export default function TopMatchesSidebar() {
   const [topMatches, setTopMatches] = useState<MatchUser[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  function cosineSimilarity(vecA: number[], vecB: number[]): number {
-    const dotProduct = vecA.reduce((acc, val, i) => acc + val * vecB[i], 0);
-    const magnitudeA = Math.sqrt(vecA.reduce((acc, val) => acc + val * val, 0));
-    const magnitudeB = Math.sqrt(vecB.reduce((acc, val) => acc + val * val, 0));
-    return dotProduct / (magnitudeA * magnitudeB);
-  }
-
-  async function calculateSimilarityScores(
-    loggedInUserId: string,
-    targetUserId: string
-  ) {
-    let max_learn_score = 0;
-    let max_teach_score = 0;
-
-    const { data: loggedInUserData } = await supabase
-      .from("user_skills")
-      .select("skill, type, embedding")
-      .eq("user_id", loggedInUserId);
-
-    let loggedInUserLearnSkills: number[][] = [];
-    let loggedInUserTeachSkills: number[][] = [];
-
-    loggedInUserData?.forEach((skill) => {
-      if (skill.type === "learn" && skill.embedding) {
-        try {
-          const embedding =
-            typeof skill.embedding === "string"
-              ? JSON.parse(skill.embedding)
-              : skill.embedding;
-
-          if (Array.isArray(embedding)) {
-            loggedInUserLearnSkills.push(embedding);
-          } else if (typeof embedding === "object" && embedding !== null) {
-            const keys = Object.keys(embedding).sort(
-              (a, b) => Number(a) - Number(b)
-            );
-            const embeddingArray = keys.map((key) => embedding[key]);
-            loggedInUserLearnSkills.push(embeddingArray);
-          }
-        } catch (error) {
-          alert(error);
-        }
-      } else if (skill.type === "teach" && skill.embedding) {
-        try {
-          const embedding =
-            typeof skill.embedding === "string"
-              ? JSON.parse(skill.embedding)
-              : skill.embedding;
-
-          if (Array.isArray(embedding)) {
-            loggedInUserTeachSkills.push(embedding);
-          } else if (typeof embedding === "object" && embedding !== null) {
-            const keys = Object.keys(embedding).sort(
-              (a, b) => Number(a) - Number(b)
-            );
-            const embeddingArray = keys.map((key) => embedding[key]);
-            loggedInUserTeachSkills.push(embeddingArray);
-          }
-        } catch (error) {
-          alert(error);
-        }
-      }
-    });
-
-    const { data: targetUserData } = await supabase
-      .from("user_skills")
-      .select("skill, type, embedding")
-      .eq("user_id", targetUserId);
-
-    let targetUserLearnSkills: number[][] = [];
-    let targetUserTeachSkills: number[][] = [];
-
-    targetUserData?.forEach((skill) => {
-      if (skill.type === "learn" && skill.embedding) {
-        try {
-          const embedding =
-            typeof skill.embedding === "string"
-              ? JSON.parse(skill.embedding)
-              : skill.embedding;
-
-          if (Array.isArray(embedding)) {
-            targetUserLearnSkills.push(embedding);
-          } else if (typeof embedding === "object" && embedding !== null) {
-            const keys = Object.keys(embedding).sort(
-              (a, b) => Number(a) - Number(b)
-            );
-            const embeddingArray = keys.map((key) => embedding[key]);
-            targetUserLearnSkills.push(embeddingArray);
-          }
-        } catch (error) {
-          alert(error);
-        }
-      } else if (skill.type === "teach" && skill.embedding) {
-        try {
-          const embedding =
-            typeof skill.embedding === "string"
-              ? JSON.parse(skill.embedding)
-              : skill.embedding;
-
-          if (Array.isArray(embedding)) {
-            targetUserTeachSkills.push(embedding);
-          } else if (typeof embedding === "object" && embedding !== null) {
-            const keys = Object.keys(embedding).sort(
-              (a, b) => Number(a) - Number(b)
-            );
-            const embeddingArray = keys.map((key) => embedding[key]);
-            targetUserTeachSkills.push(embeddingArray);
-          }
-        } catch (error) {
-          alert(error);
-        }
-      }
-    });
-
-    for (let i = 0; i < loggedInUserLearnSkills.length; i++) {
-      for (let j = 0; j < targetUserTeachSkills.length; j++) {
-        const similarity = cosineSimilarity(
-          loggedInUserLearnSkills[i],
-          targetUserTeachSkills[j]
-        );
-        if (similarity > max_learn_score) {
-          max_learn_score = similarity;
-        }
-      }
-    }
-
-    for (let i = 0; i < loggedInUserTeachSkills.length; i++) {
-      for (let j = 0; j < targetUserLearnSkills.length; j++) {
-        const similarity = cosineSimilarity(
-          loggedInUserTeachSkills[i],
-          targetUserLearnSkills[j]
-        );
-        if (similarity > max_teach_score) {
-          max_teach_score = similarity;
-        }
-      }
-    }
-
-    return { max_learn_score, max_teach_score };
-  }
-
   useEffect(() => {
     const fetchTopMatches = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
+        const user = await getAuthUser();
 
-        const { data: userData } = await supabase
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+
+        const { data: userData } = await supabase()
           .from("users")
           .select("*")
           .eq("id", user.id)
           .single();
 
-        if (!userData) return;
+        if (!userData) {
+          setLoading(false);
+          return;
+        }
 
-        const { data: allUsers } = await supabase
+        const { data: allUsers } = await supabase()
           .from("users")
-          .select("id, display_name, email")
+          .select("id, display_name, email, profile_pic_url")
           .eq("completed_onboarding", true)
           .neq("id", user.id)
-          .limit(20);
+          .limit(5);
 
         if (!allUsers || allUsers.length === 0) {
           setLoading(false);
@@ -181,17 +47,22 @@ export default function TopMatchesSidebar() {
         const usersWithScores: MatchUser[] = [];
 
         for (const targetUser of allUsers) {
-          const { max_learn_score, max_teach_score } =
-            await calculateSimilarityScores(user.id, targetUser.id);
+          try {
+            const { max_learn_score, max_teach_score } =
+              await calculateUserSimilarityScores(user.id, targetUser.id);
 
-          if (max_learn_score >= 0.7 || max_teach_score >= 0.7) {
-            usersWithScores.push({
-              id: targetUser.id,
-              name: targetUser.display_name,
-              email: targetUser.email,
-              maxLearnScore: max_learn_score,
-              maxTeachScore: max_teach_score,
-            });
+            if (max_learn_score >= 0.5 || max_teach_score >= 0.5) {
+              usersWithScores.push({
+                id: targetUser.id,
+                name: targetUser.display_name,
+                email: targetUser.email,
+                profilePicUrl: targetUser.profile_pic_url,
+                maxLearnScore: max_learn_score,
+                maxTeachScore: max_teach_score,
+              });
+            }
+          } catch (error) {
+            alert(error);
           }
         }
 
@@ -279,11 +150,21 @@ export default function TopMatchesSidebar() {
             onClick={() => viewProfile(match.id)}
           >
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">
-                  {match.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
+              {match.profilePicUrl ? (
+                <div className="w-10 h-10 rounded-full overflow-hidden">
+                  <img
+                    src={match.profilePicUrl}
+                    alt={`${match.name}'s profile`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">
+                    {match.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-white-900 truncate">
                   {match.name}
@@ -304,7 +185,7 @@ export default function TopMatchesSidebar() {
                   </div>
                 )}
               {match.maxTeachScore !== undefined &&
-                match.maxTeachScore >= 0.7 && (
+                match.maxTeachScore >= 0.85 && (
                   <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full inline-block">
                     👨‍🏫 Good to Teach
                   </div>

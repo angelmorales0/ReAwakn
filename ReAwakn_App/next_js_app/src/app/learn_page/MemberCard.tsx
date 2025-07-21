@@ -24,7 +24,7 @@ export default function MemberCard({
             🎓 Learn From
           </div>
         )}
-        {member.maxTeachScore !== undefined && member.maxTeachScore >= 0.7 && (
+        {member.maxTeachScore !== undefined && member.maxTeachScore >= 0.85 && (
           <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
             👨‍🏫 Teach
           </div>
@@ -40,11 +40,21 @@ export default function MemberCard({
       )}
 
       <div className="flex flex-col items-center text-center">
-        <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mb-4">
-          <span className="text-white font-semibold text-xl">
-            {member.name.charAt(0).toUpperCase()}
-          </span>
-        </div>
+        {member.profilePicUrl ? (
+          <div className="w-16 h-16 rounded-full mb-4 overflow-hidden">
+            <img
+              src={member.profilePicUrl}
+              alt={`${member.name}'s profile`}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mb-4">
+            <span className="text-white font-semibold text-xl">
+              {member.name.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
 
         <h3 className="font-semibold text-gray-900 text-lg mb-1">
           {member.name}

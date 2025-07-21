@@ -1,6 +1,5 @@
 import moment from "moment-timezone";
 import { CalendarEvent } from "@/types/types";
-import { supabase } from "@/app/utils/supabase/client";
 
 export function hasConflict(
   event: { startUTC?: string; endUTC?: string },

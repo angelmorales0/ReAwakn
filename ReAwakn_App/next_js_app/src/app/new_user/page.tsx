@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
+import { getEmbeddingFromAPI } from "@/utility_methods/embeddingUtils";
 import { supabase } from "@/app/utils/supabase/client";
 import { convertAvailabilityToUTC } from "@/utility_methods/timeUtils";
 import {
@@ -53,18 +53,6 @@ export default function NewUserQuestionnaire() {
     "Hawaii Time (HT)",
     "Alaska Time (AKT)",
   ];
-
-  const getEmbedding = async (skill: string) => {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(skill.toLowerCase());
-
-    const jsonbEmbedding: Record<string, number> = {};
-    for (let i = 0; i < bytes.length; i++) {
-      jsonbEmbedding[i.toString()] = bytes[i];
-    }
-
-    return jsonbEmbedding;
-  };
 
   const handleAvailabilityChange = (option: string) => {
     setFormData((prev) => ({
@@ -123,7 +111,7 @@ export default function NewUserQuestionnaire() {
 
       const teachSkillsWithEmbeddings = await Promise.all(
         formData.skillsToTeach.map(async (skill) => {
-          const embedding = await getEmbedding(skill.skill);
+          const embedding = await getEmbeddingFromAPI(skill.skill);
           return {
             user_id: user.id,
             skill: skill.skill,
@@ -136,7 +124,7 @@ export default function NewUserQuestionnaire() {
 
       const learnSkillsWithEmbeddings = await Promise.all(
         formData.skillsToLearn.map(async (skill) => {
-          const embedding = await getEmbedding(skill.skill);
+          const embedding = await getEmbeddingFromAPI(skill.skill);
           return {
             user_id: user.id,
             skill: skill.skill,
