@@ -30,7 +30,7 @@ export default function LearnPage() {
           .neq("id", loggedInUser.id);
 
         if (error) {
-          console.error("Error fetching users:", error);
+          alert("Error fetching users:");
           setLoading(false);
           return;
         }
@@ -82,10 +82,10 @@ export default function LearnPage() {
 
       <div className="h-full border rounded-md flex flex-col">
         <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-white-900 mb-2">
             Learning Connections
           </h1>
-          <p className="text-gray-600 mb-4">
+          <p className="text-white-600 mb-4">
             Find people who are good matches for learning and teaching
           </p>
 

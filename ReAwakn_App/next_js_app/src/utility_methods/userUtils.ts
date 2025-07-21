@@ -35,7 +35,7 @@ export const updateUserAvailability = async (
     .eq("id", userId);
 
   if (error) {
-    console.error("Error updating user availability:", error);
+    alert("Error updating user availability");
     return { success: false, error };
   }
 

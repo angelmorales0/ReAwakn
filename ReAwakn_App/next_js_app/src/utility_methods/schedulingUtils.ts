@@ -1,6 +1,16 @@
 import moment from "moment-timezone";
 import { CalendarEvent } from "@/types/types";
 
+moment.tz.add([
+  "America/Los_Angeles|PST PDT|80 70|0101|1Lzm0 1zb0 Op0",
+  "America/Denver|MST MDT|70 60|0101|1Lzm0 1zb0 Op0",
+  "America/Chicago|CST CDT|60 50|0101|1Lzm0 1zb0 Op0",
+  "America/New_York|EST EDT|50 40|0101|1Lzm0 1zb0 Op0",
+  "America/Halifax|AST ADT|40 30|0101|1Lzm0 1zb0 Op0",
+  "Pacific/Honolulu|HST|a0|0|",
+  "America/Anchorage|AKST AKDT|90 80|0101|1Lzm0 1zb0 Op0",
+]);
+
 const timezoneMapping: { [key: string]: string } = {
   "Pacific Time (PT)": "America/Los_Angeles",
   "Mountain Time (MT)": "America/Denver",
@@ -100,9 +110,7 @@ export function convertToCalendarEvents(
         millisecond: 0,
       });
 
-      console.log(utcStart, "UTC");
       const localStart = utcStart.clone().tz(timezone);
-      console.log(localStart, "LOCAL");
       const localEnd = utcEnd.clone().tz(timezone);
 
       let slotStart = localStart.clone();

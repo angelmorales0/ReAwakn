@@ -24,6 +24,7 @@ export default function SocialWall() {
       .order("created_at", { ascending: false });
 
     if (error) {
+      alert("Error loading posts: " + error.message);
     } else {
       setPosts(data ?? []);
     }

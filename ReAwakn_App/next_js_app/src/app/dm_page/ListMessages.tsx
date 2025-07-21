@@ -15,7 +15,7 @@ export default function ListMessages({ messages }: ListOfMessages) {
         .in("id", userIds);
 
       if (error) {
-        console.error("Error Fetching Usernames");
+        alert("Error Fetching Usernames");
 
         return;
       }

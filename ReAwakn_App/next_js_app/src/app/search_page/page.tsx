@@ -171,12 +171,9 @@ export default function SearchPage() {
 
       <div className="h-full border rounded-md flex flex-col">
         <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-white-900 mb-2">
             Search Members
           </h1>
-          <p className="text-gray-600">
-            Find and connect with other learners and teachers
-          </p>
 
           <RefreshSimilarityButton
             onRefreshComplete={() => {

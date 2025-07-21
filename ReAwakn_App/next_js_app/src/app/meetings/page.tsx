@@ -100,21 +100,16 @@ export default function MeetingsPage() {
   }, []);
 
   const selectMeeting = (event: CalendarMeeting) => {
-    console.log(event);
     setSelectedMeeting(event);
     setIsModalOpen(true);
   };
 
   const acceptMeeting = async (meetingId: string) => {
     try {
-      const { error } = await supabase
+      await supabase
         .from("meetings")
         .update({ is_confirmed: true })
         .eq("id", meetingId);
-
-      if (error) {
-        throw error;
-      }
 
       await fetchMeetings();
       alert("Meeting confirmed successfully!");

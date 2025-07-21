@@ -1,5 +1,5 @@
 export type Message = {
-  created_at: string; // These need to be kept snake case for database parsing, will be refactored at a later date
+  created_at: string;
   text: string;
   sent_by: string;
 };
@@ -197,4 +197,19 @@ export interface MeetingDetailsModalProps {
   meeting: CalendarMeeting;
   onConfirm: (meetingId: string) => void;
   onCancel: (meetingId: string) => void;
+}
+
+export interface RankedSlot {
+  startUTC: string;
+  endUTC: string;
+  score: number;
+  components?: {
+    time_gap: number;
+    chronotype: number;
+  };
+}
+
+export interface RankedCalendarEvent extends CalendarEvent {
+  score?: number;
+  title?: string;
 }

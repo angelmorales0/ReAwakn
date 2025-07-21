@@ -1,0 +1,53 @@
+.calendar-container * {
+  color: black !important;
+}
+
+.rbc-calendar {
+  color: black !important;
+}
+.rbc-event-content {
+  color: white !important;
+}
+.rbc-header,
+.rbc-label,
+.rbc-toolbar-label,
+.rbc-time-content,
+.rbc-time-view,
+.rbc-day-slot .rbc-time-slot,
+.rbc-today {
+  color: black !important;
+}
+.rbc-toolbar button {
+  color: black !important;
+}
+.rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  color: black !important;
+}
+
+.bg-blue-500 *,
+.bg-green-500 *,
+.bg-red-500 *,
+.bg-purple-500 *,
+.bg-indigo-500 *,
+.bg-pink-500 * {
+  color: white !important;
+}
+
+.calendar-container input,
+.calendar-container textarea,
+.calendar-container select,
+.calendar-container h1,
+.calendar-container h2,
+.calendar-container h3,
+.calendar-container h4,
+.calendar-container h5,
+.calendar-container h6,
+.calendar-container p,
+.calendar-container span,
+.calendar-container div {
+  color: black !important;
+}
+
+.calendar-page-text {
+  color: black !important;
+}

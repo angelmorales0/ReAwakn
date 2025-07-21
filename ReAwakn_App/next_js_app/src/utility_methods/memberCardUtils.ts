@@ -196,17 +196,14 @@ export const calculateUserSimilarityScores = async (
     let targetUserLearnSkills: number[][] = [];
     let targetUserTeachSkills: number[][] = [];
 
-    // Process logged-in user skills
     loggedInUserSkills.forEach((skill) => {
       addToSkillsArray(skill, loggedInUserLearnSkills, loggedInUserTeachSkills);
     });
 
-    // Process target user skills
     targetUserSkills.forEach((skill) => {
       addToSkillsArray(skill, targetUserLearnSkills, targetUserTeachSkills);
     });
 
-    // Calculate scores
     const max_learn_score = findMaxLearnSimilarity(
       loggedInUserLearnSkills,
       targetUserTeachSkills

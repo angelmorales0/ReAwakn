@@ -4,16 +4,23 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment-timezone";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "@/styles/calendar.css";
 import { supabase } from "@/app/utils/supabase/client";
 import MeetingConfirmationModal from "./MeetingConfirmationModal";
 import {
   findOverlappingTimeSlots,
   convertToCalendarEvents,
 } from "@/utility_methods/schedulingUtils";
-import { CalendarUser, CalendarEvent } from "@/types/types";
+import {
+  filterAvailableEvents,
+  prepareUserForRanking,
+  prepareSlotsForRanking,
+  markBestMeetingSlot,
+} from "@/utility_methods/meetingUtils";
+import { CalendarUser, RankedCalendarEvent, RankedSlot } from "@/types/types";
+
 import { getAuthUser } from "@/utility_methods/userUtils";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
-import { start } from "repl";
 const localizer = momentLocalizer(moment);
 
 export default function ScheduleMeetingPage() {
@@ -22,10 +29,12 @@ export default function ScheduleMeetingPage() {
   const targetUserId = searchParams.get("userId");
   const [loggedInUser, setLoggedInUser] = useState<CalendarUser | null>(null);
   const [targetUser, setTargetUser] = useState<CalendarUser | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<CalendarEvent[] | null>(
-    []
+  const [availableSlots, setAvailableSlots] = useState<
+    RankedCalendarEvent[] | null
+  >([]);
+  const [selectedSlot, setSelectedSlot] = useState<RankedCalendarEvent | null>(
+    null
   );
-  const [selectedSlot, setSelectedSlot] = useState<CalendarEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -87,55 +96,111 @@ export default function ScheduleMeetingPage() {
     hostId: string,
     targetId: string
   ) => {
-    const { data: hostAvailability } = await supabase
+    const { data: hostData } = await supabase
       .from("users")
-      .select("availability")
+      .select("*")
       .eq("id", hostId)
       .single();
 
-    const { data: targetAvailability } = await supabase
+    const { data: targetData } = await supabase
       .from("users")
-      .select("availability")
+      .select("*")
       .eq("id", targetId)
       .single();
 
-    if (!hostAvailability?.availability || !targetAvailability?.availability) {
+    if (!hostData?.availability || !targetData?.availability) {
       return [];
     }
 
     try {
-      const hostAvailabilityArray = JSON.parse(hostAvailability.availability);
-      const targetAvailabilityArray = JSON.parse(
-        targetAvailability.availability
-      );
+      const hostAvailabilityArray = JSON.parse(hostData.availability);
+      const targetAvailabilityArray = JSON.parse(targetData.availability);
 
       const overlappingSlots = findOverlappingTimeSlots(
         hostAvailabilityArray,
         targetAvailabilityArray
       );
 
-      return convertToCalendarEvents(overlappingSlots, userTimeZone);
+      const calendarEvents = convertToCalendarEvents(
+        overlappingSlots,
+        userTimeZone
+      );
+
+      const startOfMonth = moment().startOf("month").toISOString();
+      const endOfMonth = moment().add(1, "month").endOf("month").toISOString();
+
+      const { data: existingMeetings, error: meetingsError } = await supabase
+        .from("meetings")
+        .select("*")
+        .or(
+          `host_id.eq.${hostId},guest_id.eq.${hostId},host_id.eq.${targetId},guest_id.eq.${targetId}`
+        )
+        .gte("start_time", startOfMonth)
+        .lte("start_time", endOfMonth);
+
+      if (meetingsError) {
+        alert("Error fetching existing meetings");
+      }
+
+      const availableEvents = filterAvailableEvents(
+        calendarEvents,
+        existingMeetings
+      );
+
+      if (availableEvents.length === 0) {
+        return [];
+      }
+
+      const host = prepareUserForRanking(hostId, hostData);
+      const target = prepareUserForRanking(targetId, targetData);
+
+      const slotsForRanking = prepareSlotsForRanking(availableEvents);
+
+      try {
+        const response = await fetch("/meeting_ranker_api", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user1: host,
+            user2: target,
+            slots: slotsForRanking,
+            existingMeetings: existingMeetings || [],
+          }),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to rank meeting slots");
+          return availableEvents;
+        }
+
+        const { top_slots } = await response.json();
+
+        let bestSlot: RankedSlot | null = null;
+        if (top_slots && top_slots.length > 0) {
+          bestSlot = top_slots.reduce(
+            (best: RankedSlot, current: RankedSlot) =>
+              current.score > best.score ? current : best,
+            top_slots[0]
+          );
+        }
+
+        return markBestMeetingSlot(
+          availableEvents,
+          bestSlot
+        ) as RankedCalendarEvent[];
+      } catch (error) {
+        console.error("Error ranking meeting slots:", error);
+        return availableEvents;
+      }
     } catch (error) {
       alert(error);
       return [];
     }
   };
 
-  const handleSelectSlot = (slotInfo: { start: Date }) => {
-    const start = new Date(slotInfo.start);
-    const end = new Date(start);
-    end.setHours(start.getHours() + 1);
-    const oneHourSlot = {
-      ...slotInfo,
-      start,
-      end,
-    };
-
-    setSelectedSlot(oneHourSlot);
-    setIsModalOpen(true);
-  };
-
-  const handleSelectEvent = (event: {
+  const selectEvent = (event: {
     start: Date;
     end: Date;
     startUTC: string;
@@ -162,34 +227,17 @@ export default function ScheduleMeetingPage() {
       const startTimeISO = selectedSlot.startUTC
         ? moment.utc(selectedSlot.startUTC).toISOString()
         : moment.utc(selectedSlot.start).toISOString();
-      const localMoment = moment.utc(startTimeISO).tz(userTimeZone);
-      console.log(userTimeZone);
-      console.log(localMoment, "LOCAL:");
-      function localToUTCDBFormat(
-        dateStr: string,
-        timeStr: string,
-        tz: string
-      ): string {
-        return moment
-          .tz(`${dateStr} ${timeStr}`, "YYYY-MM-DD HH:mm", tz)
-          .utc()
-          .format("YYYY-MM-DD HH:mm:ss[+00]");
-      }
-
-      console.log(startTimeISO);
 
       const { data: existingMeetings, error: conflictError } = await supabase
         .from("meetings")
         .select("*")
         .or(
-          `and(host_id.eq.${loggedInUser.id},start_time.eq.${startTimeISO}),` +
-            `and(guest_id.eq.${loggedInUser.id},start_time.eq.${startTimeISO}),` +
-            `and(host_id.eq.${targetUser.id},start_time.eq.${startTimeISO}),` +
-            `and(guest_id.eq.${targetUser.id},start_time.eq.${startTimeISO})`
-        );
+          `host_id.eq.${loggedInUser.id},guest_id.eq.${loggedInUser.id},host_id.eq.${targetUser.id},guest_id.eq.${targetUser.id}`
+        )
+        .eq("start_time", startTimeISO);
 
       if (conflictError) {
-        console.log(conflictError);
+        console.error("Error checking for meeting conflicts:", conflictError);
         throw new Error("Error checking for meeting conflicts");
       }
 
@@ -200,7 +248,7 @@ export default function ScheduleMeetingPage() {
         return;
       }
 
-      await supabase.from("meetings").insert({
+      const { error: insertError } = await supabase.from("meetings").insert({
         host_id: loggedInUser.id,
         guest_id: targetUser.id,
         start_time: startTimeISO,
@@ -208,10 +256,13 @@ export default function ScheduleMeetingPage() {
         is_confirmed: false,
       });
 
+      if (insertError) {
+        throw new Error("Failed to schedule meeting");
+      }
+
       alert("Meeting scheduled successfully!");
       router.push("/");
     } catch (error) {
-      console.log(error);
       alert("Failed to schedule meeting. Please try again.");
     }
   };
@@ -225,31 +276,18 @@ export default function ScheduleMeetingPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <style jsx global>{`
-        .rbc-calendar {
-          color: black !important;
-        }
-        .rbc-event-content {
-          color: white !important; /* Keep event text white for contrast */
-        }
-        .rbc-header,
-        .rbc-label,
-        .rbc-toolbar-label,
-        .rbc-time-content,
-        .rbc-time-view {
-          color: black !important;
-        }
-        .rbc-toolbar button {
-          color: black !important;
-        }
-        .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
-          color: black !important;
-        }
-      `}</style>
-      <h1 className="text-2xl font-bold mb-4">
-        Schedule a Meeting with {targetUser?.name || targetUser?.display_name}
-      </h1>
+    <div className="container mx-auto px-4 py-8 calendar-container">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold calendar-page-text">
+          Schedule a Meeting with {targetUser?.name || targetUser?.display_name}
+        </h1>
+        <button
+          onClick={() => router.push("/")}
+          className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
+        >
+          <span className="calendar-page-text">Back to Home</span>
+        </button>
+      </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 flex items-center">
         <svg
@@ -273,18 +311,43 @@ export default function ScheduleMeetingPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <p className="mb-4 text-black">
+        <p className="mb-4 calendar-page-text">
           Select an available time slot to schedule a 1-hour meeting. Available
-          slots are shown in the calendar below.
+          slots are shown in the calendar below, ranked by optimality.
         </p>
+
+        <div className="mb-4 p-3 bg-gray-50 rounded-md">
+          <h3 className="text-sm font-medium calendar-page-text mb-2">
+            Meeting Time Legend
+          </h3>
+          <p className="text-xs calendar-page-text mb-2">
+            The system has analyzed both users' preferences, chronotypes, and
+            schedules to identify the optimal meeting time.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-[#FF5722] mr-1 rounded border border-[#D84315]"></div>
+              <span className="text-xs calendar-page-text">
+                Best Meeting Time
+              </span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-[#78909C] mr-1 rounded"></div>
+              <span className="text-xs calendar-page-text">Available Time</span>
+            </div>
+          </div>
+        </div>
 
         <div className="border border-gray-200 rounded-md relative">
           <div className="bg-white py-2 px-4 border-b border-gray-200 flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-500">
+            <span className="text-sm font-medium calendar-page-text">
               Available meeting times
             </span>
           </div>
-          <div className="h-[700px] overflow-y-auto" id="calendar-container">
+          <div
+            className="h-[700px] overflow-y-auto calendar-container"
+            id="calendar-container"
+          >
             {availableSlots && availableSlots.length > 0 ? (
               <Calendar
                 localizer={localizer}
@@ -295,22 +358,35 @@ export default function ScheduleMeetingPage() {
                 }))}
                 startAccessor="start"
                 endAccessor="end"
-                onSelectEvent={handleSelectEvent}
+                onSelectEvent={selectEvent}
                 step={60}
                 timeslots={1}
                 defaultView="week"
-                views={["month", "week"]}
+                views={["week"]}
                 date={currentDate}
                 onNavigate={(date) => setCurrentDate(date)}
                 min={new Date(0, 0, 0, 6, 0)}
                 max={new Date(0, 0, 0, 23, 0)}
                 className="rounded-md text-black calendar-black-text"
-                eventPropGetter={() => ({
-                  style: {
-                    backgroundColor: "#4CAF50",
-                    cursor: "pointer",
-                  },
-                })}
+                eventPropGetter={(event: any) => {
+                  if (event.resource?.isBestSlot) {
+                    return {
+                      style: {
+                        backgroundColor: "#FF5722",
+                        cursor: "pointer",
+                        border: "2px solid #D84315",
+                        boxShadow: "0 0 5px rgba(255, 87, 34, 0.5)",
+                      },
+                    };
+                  }
+
+                  return {
+                    style: {
+                      backgroundColor: "#78909C",
+                      cursor: "pointer",
+                    },
+                  };
+                }}
                 formats={{
                   timeGutterFormat: (date: Date) => moment(date).format("h A"),
                   eventTimeRangeFormat: (range) => {
@@ -336,7 +412,7 @@ export default function ScheduleMeetingPage() {
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <h3 className="text-lg font-medium text-gray-700 mb-2">
+                <h3 className="text-lg font-medium calendar-page-text mb-2">
                   No Availability Found
                 </h3>
               </div>
