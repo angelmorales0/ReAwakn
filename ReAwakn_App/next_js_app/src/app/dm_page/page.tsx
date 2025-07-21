@@ -47,13 +47,6 @@ export default function DmPage() {
   };
 
   useEffect(() => {
-    if (!convoId) {
-      toast.error(
-        "No conversation selected. Please select a conversation to view messages."
-      );
-
-      return;
-    }
     fetchMessages();
   }, [convoId, isListUpdated]);
 

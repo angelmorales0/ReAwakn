@@ -1,15 +1,11 @@
-import { MemberCardProps } from "@/types/types";
-import {
-  getSimilarityColor,
-  getSimilarityLabel,
-} from "@/utility_methods/memberCardUtils";
+import { MemberWithSimilarity } from "@/types/types";
 import { useMemberInteractions } from "@/hooks/useMemberInteractions";
 
 export default function MemberCard({
   member,
-  loggedInUserId = "",
-  showSimilarityScore = false,
-}: MemberCardProps) {
+}: {
+  member: MemberWithSimilarity;
+}) {
   const {
     isDisabled,
     isFriends,
@@ -22,31 +18,24 @@ export default function MemberCard({
 
   return (
     <div className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 p-6 relative">
-      {showSimilarityScore &&
-        member.similarityScore !== undefined &&
-        loggedInUserId !== member.id && (
-          <div className="absolute top-3 right-3 z-10">
-            <div
-              className={`${getSimilarityColor(
-                member.similarityScore
-              )} text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg`}
-            >
-              {Math.round(member.similarityScore * 100)}%
-            </div>
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
+        {member.maxLearnScore !== undefined && member.maxLearnScore >= 0.7 && (
+          <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+            🎓 Learn From
           </div>
         )}
+        {member.maxTeachScore !== undefined && member.maxTeachScore >= 0.7 && (
+          <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+            👨‍🏫 Teach
+          </div>
+        )}
+      </div>
 
       {isPendingRequest && (
         <div className="absolute top-3 left-3 z-10">
           <div className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-            Pending Connection Request
+            Pending Request
           </div>
-        </div>
-      )}
-
-      {showSimilarityScore && member.similarityLoading && (
-        <div className="absolute top-3 right-3 z-10">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
         </div>
       )}
 
@@ -62,18 +51,8 @@ export default function MemberCard({
         </h3>
 
         {member.email && (
-          <p className="text-sm text-gray-600 mb-2">{member.email}</p>
+          <p className="text-sm text-gray-600 mb-4">{member.email}</p>
         )}
-
-        {showSimilarityScore &&
-          member.similarityScore !== undefined &&
-          loggedInUserId !== member.id && (
-            <div className="mb-3">
-              <span className="text-xs text-gray-600 font-medium">
-                {getSimilarityLabel(member.similarityScore)}
-              </span>
-            </div>
-          )}
 
         <div className="w-full space-y-2">
           {isFriends ? (

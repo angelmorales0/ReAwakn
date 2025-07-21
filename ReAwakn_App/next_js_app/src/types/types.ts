@@ -21,7 +21,7 @@ export interface MeetingConfirmationModalProps {
     display_name?: string;
     email?: string;
   };
-  onConfirm: (meetingDetails: { title: string; description: string }) => void;
+  onConfirm: (meetingDetails: { title: string }) => void;
 }
 
 export interface MatchUser {

@@ -52,7 +52,8 @@ export const addToSkillsArray = (
 export const checkFriendshipStatus = async (
   memberId: string,
   setIsFriends: (value: boolean) => void,
-  setIsDisabled: (value: boolean) => void
+  disableConnectionButton: (value: boolean) => void,
+  setPendingRequest: (value: boolean) => void = () => {}
 ) => {
   try {
     const user = await getAuthUser();
@@ -75,12 +76,30 @@ export const checkFriendshipStatus = async (
       return;
     }
 
+    const { data: otherUserRequestedMe } = await supabase
+      .from("friends")
+      .select("*")
+      .eq("owner", memberId)
+      .eq("friend", user.id)
+      .single();
+
+    const { data: iRequestedOtherUser } = await supabase
+      .from("friends")
+      .select("*")
+      .eq("owner", user.id)
+      .eq("friend", memberId)
+      .single();
+
+    const iHavePendingRequest = otherUserRequestedMe && !iRequestedOtherUser;
+
+    setPendingRequest(iHavePendingRequest);
+
     setIsFriends(isMutualFriends);
 
-    if (!isMutualFriends || user.id === memberId) {
-      setIsDisabled(true);
+    if (!iRequestedOtherUser) {
+      disableConnectionButton(false);
     } else {
-      setIsDisabled(false);
+      disableConnectionButton(true);
     }
   } catch (error) {
     console.error("Error checking friendship status:", error);
@@ -137,11 +156,6 @@ export const findMaxTeachSimilarity = (
   return max_teach_score;
 };
 
-/**
- * Returns a Tailwind CSS background color class based on the similarity score
- * @param score Similarity score between 0 and 1
- * @returns Tailwind CSS class for background color
- */
 export const getSimilarityColor = (score: number): string => {
   if (score >= 0.8) return "bg-green-500";
   if (score >= 0.6) return "bg-blue-500";
@@ -150,15 +164,62 @@ export const getSimilarityColor = (score: number): string => {
   return "bg-red-500";
 };
 
-/**
- * Returns a human-readable label for the similarity score
- * @param score Similarity score between 0 and 1
- * @returns Text label describing the match quality
- */
 export const getSimilarityLabel = (score: number): string => {
   if (score >= 0.8) return "Excellent Match";
   if (score >= 0.6) return "Great Match";
   if (score >= 0.4) return "Good Match";
   if (score >= 0.2) return "Fair Match";
   return "Low Match";
+};
+
+export const calculateUserSimilarityScores = async (
+  loggedInUserId: string,
+  targetUserId: string
+) => {
+  try {
+    const { data: loggedInUserSkills } = await supabase
+      .from("user_skills")
+      .select("skill, type, embedding")
+      .eq("user_id", loggedInUserId);
+
+    const { data: targetUserSkills } = await supabase
+      .from("user_skills")
+      .select("skill, type, embedding")
+      .eq("user_id", targetUserId);
+
+    if (!loggedInUserSkills || !targetUserSkills) {
+      return { max_learn_score: 0, max_teach_score: 0 };
+    }
+
+    let loggedInUserLearnSkills: number[][] = [];
+    let loggedInUserTeachSkills: number[][] = [];
+    let targetUserLearnSkills: number[][] = [];
+    let targetUserTeachSkills: number[][] = [];
+
+    // Process logged-in user skills
+    loggedInUserSkills.forEach((skill) => {
+      addToSkillsArray(skill, loggedInUserLearnSkills, loggedInUserTeachSkills);
+    });
+
+    // Process target user skills
+    targetUserSkills.forEach((skill) => {
+      addToSkillsArray(skill, targetUserLearnSkills, targetUserTeachSkills);
+    });
+
+    // Calculate scores
+    const max_learn_score = findMaxLearnSimilarity(
+      loggedInUserLearnSkills,
+      targetUserTeachSkills
+    );
+
+    const max_teach_score = findMaxTeachSimilarity(
+      loggedInUserTeachSkills,
+      targetUserLearnSkills
+    );
+
+    return { max_learn_score, max_teach_score };
+  } catch (error) {
+    console.error("Error calculating scores:", error);
+    return { max_learn_score: 0, max_teach_score: 0 };
+  }
 };
