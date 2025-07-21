@@ -149,9 +149,9 @@ export default function ScheduleMeetingPage() {
   };
 
   const handleBookMeeting = async () => {
-    //1. Need to check if time slot has any conflicts on other users end,
-    // if no conflicts add
-    //if yes conflicts dont add
+    //TODO 1. Need to check if time slot has any conflicts on other users end,
+    //TODO if no conflicts add
+    //TODO if yes conflicts dont add
   };
 
   if (isLoading) {

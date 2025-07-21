@@ -79,8 +79,6 @@ export default function ProfilePage() {
     fetchUserProfile();
   }, []);
 
-  useEffect(() => {}, [teachingSkillsData, learningSkillsData]);
-
   if (!profile) {
     return <LoadingState />;
   }
