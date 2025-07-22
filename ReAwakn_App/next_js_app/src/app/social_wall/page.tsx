@@ -44,10 +44,7 @@ export default function SocialWall() {
         .in("id", authorIds);
 
       if (usersError) {
-        console.error(
-          "Error loading user profile pictures:",
-          usersError.message
-        );
+        alert("Error loading users: " + usersError.message);
       }
 
       const profilePicMap = new Map();
@@ -66,7 +63,6 @@ export default function SocialWall() {
 
       setPosts(postsWithProfilePics);
     } catch (error) {
-      console.error("Error in getPosts:", error);
       alert("An error occurred while loading posts");
     } finally {
       setLoading(false);

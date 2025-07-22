@@ -91,7 +91,7 @@ export default function MeetingsPage() {
           setLoggedInUserData(data);
         }
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        alert(error);
       }
     };
 

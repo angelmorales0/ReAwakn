@@ -1,6 +1,8 @@
 import { MemberWithSimilarity } from "@/types/types";
 import { useMemberInteractions } from "@/hooks/useMemberInteractions";
 
+const MATCH_THRESHOLD = 0.8;
+
 export default function MemberCard({
   member,
 }: {
@@ -19,12 +21,12 @@ export default function MemberCard({
   return (
     <div className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 p-6 relative">
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
-        {member.maxLearnScore !== undefined && member.maxLearnScore >= 0.7 && (
+        {member.maxLearnScore !== undefined && member.maxLearnScore >= MATCH_THRESHOLD && (
           <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
             🎓 Learn From
           </div>
         )}
-        {member.maxTeachScore !== undefined && member.maxTeachScore >= 0.85 && (
+        {member.maxTeachScore !== undefined && member.maxTeachScore >= MATCH_THRESHOLD && (
           <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
             👨‍🏫 Teach
           </div>

@@ -1,32 +1,11 @@
 import moment from "moment-timezone";
-
-type Chronotype = "early_bird" | "night_owl";
-
-interface User {
-  user_id: string;
-  timezone: string;
-  chronotype: Chronotype;
-  existingMeetings?: ExistingMeeting[];
-}
-
-interface ExistingMeeting {
-  startUTC: string;
-  endUTC: string;
-}
-
-interface Slot {
-  startUTC: string;
-  endUTC: string;
-}
-
-interface RankedSlot extends Slot {
-  score: number;
-  components: {
-    time_gap: number;
-    chronotype: number;
-    density: number;
-  };
-}
+import {
+  Chronotype,
+  MeetingUser as User,
+  ExistingMeeting as ExistingMeeting,
+  MeetingSlot as Slot,
+  RankedSlot,
+} from "@/types/types";
 
 function scoreTimeGap(startUTC: string, nowMS = Date.now()): number {
   const halfLife = 3 * 24 * 60;

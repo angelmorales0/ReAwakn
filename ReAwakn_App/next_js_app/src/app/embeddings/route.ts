@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-
+const huggingFaceUrl =
+  "https://api-inference.huggingface.co/models/BAAI/bge-small-en-v1.5";
 export async function POST(request: NextRequest) {
   try {
     const { skill } = await request.json();
@@ -17,22 +18,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/BAAI/bge-small-en-v1.5",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+    const response = await fetch(huggingFaceUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        inputs: skill,
+        options: {
+          wait_for_model: true,
         },
-        body: JSON.stringify({
-          inputs: skill,
-          options: {
-            wait_for_model: true,
-          },
-        }),
-      }
-    );
+      }),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();

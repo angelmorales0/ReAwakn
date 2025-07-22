@@ -51,22 +51,23 @@ export default function LearnPage() {
           })
         );
 
-        let filteredMembers = usersWithTags;
-
         if (filter === "learn") {
-          filteredMembers = usersWithTags.filter(
+          const filteredMembers = usersWithTags.filter(
             (member) =>
               member.maxLearnScore !== undefined && member.maxLearnScore >= 0.7
           );
+          setMembers(filteredMembers);
         } else if (filter === "teach") {
-          filteredMembers = usersWithTags.filter(
+          const filteredMembers = usersWithTags.filter(
             (member) =>
               member.maxTeachScore !== undefined && member.maxTeachScore >= 0.85
           );
+          setMembers(filteredMembers);
+        } else {
+          setMembers(usersWithTags);
         }
-        setMembers(filteredMembers);
       } catch (error) {
-        console.error("Error processing members:", error);
+        alert("Error fetching users: " + error);
       } finally {
         setLoading(false);
       }

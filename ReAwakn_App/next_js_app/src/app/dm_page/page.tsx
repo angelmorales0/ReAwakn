@@ -34,6 +34,8 @@ export default function DmPage() {
 
         if (data && !error) {
           setProfilePicUrl(data.profile_pic_url);
+        } else {
+          toast.error(`Error: ${error.message}`);
         }
       };
 

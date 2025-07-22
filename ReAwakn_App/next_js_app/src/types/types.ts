@@ -202,14 +202,46 @@ export interface MeetingDetailsModalProps {
   onCancel: (meetingId: string) => void;
 }
 
-export interface RankedSlot {
+export type Chronotype = "early_bird" | "night_owl";
+
+export interface MeetingUser {
+  user_id: string;
+  timezone: string;
+  chronotype: Chronotype;
+  existingMeetings?: ExistingMeeting[];
+}
+
+export interface ExistingMeeting {
   startUTC: string;
   endUTC: string;
+}
+
+export interface MeetingSlot {
+  startUTC: string;
+  endUTC: string;
+}
+
+export interface RankedSlot extends MeetingSlot {
   score: number;
-  components?: {
+  components: {
     time_gap: number;
     chronotype: number;
+    density: number;
   };
+}
+
+export interface DatabaseMeeting {
+  host_id: string;
+  guest_id: string;
+  start_time: string;
+  [key: string]: any;
+}
+
+export interface MeetingRankerRequestBody {
+  user1: MeetingUser;
+  user2: MeetingUser;
+  slots: MeetingSlot[];
+  existingMeetings?: DatabaseMeeting[];
 }
 
 export interface RankedCalendarEvent extends CalendarEvent {
