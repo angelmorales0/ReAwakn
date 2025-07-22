@@ -6,6 +6,8 @@ import { MatchUser } from "@/types/types";
 import { calculateUserSimilarityScores } from "@/utility_methods/memberCardUtils";
 import { getAuthUser } from "@/utility_methods/userUtils";
 
+const MATCH_THRESHOLD = 0.8;
+
 export default function TopMatchesSidebar() {
   const [topMatches, setTopMatches] = useState<MatchUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,13 +181,13 @@ export default function TopMatchesSidebar() {
 
             <div className="space-y-1">
               {match.maxLearnScore !== undefined &&
-                match.maxLearnScore >= 0.7 && (
+                match.maxLearnScore >= MATCH_THRESHOLD && (
                   <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full inline-block mr-1">
                     🎓 Good to Learn From
                   </div>
                 )}
               {match.maxTeachScore !== undefined &&
-                match.maxTeachScore >= 0.85 && (
+                match.maxTeachScore >= MATCH_THRESHOLD && (
                   <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full inline-block">
                     👨‍🏫 Good to Teach
                   </div>

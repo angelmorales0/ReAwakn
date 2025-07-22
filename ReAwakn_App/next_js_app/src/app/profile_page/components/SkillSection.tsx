@@ -85,7 +85,6 @@ export default function SkillSection({
         toast.error("Failed to add skill");
       }
     } catch (error) {
-      console.error("Error adding skill:", error);
       toast.error("An error occurred while adding the skill");
     }
   };
@@ -101,7 +100,6 @@ export default function SkillSection({
         toast.error("Failed to remove skill");
       }
     } catch (error) {
-      console.error("Error removing skill:", error);
       toast.error("An error occurred while removing the skill");
     }
   };

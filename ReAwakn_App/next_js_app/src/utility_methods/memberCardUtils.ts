@@ -2,6 +2,7 @@ import { UserSkill } from "@/types/types";
 import { cosineSimilarity } from "@/hooks/userEmbeddings";
 import { supabase } from "@/app/utils/supabase/client";
 import { getAuthUser } from "@/utility_methods/userUtils";
+import { toast } from "sonner";
 
 export const addToSkillsArray = (
   skill: UserSkill,
@@ -59,7 +60,7 @@ export const checkFriendshipStatus = async (
     const user = await getAuthUser();
 
     if (!user) {
-      console.error("No authenticated user found");
+      alert("No authenticated user found");
       return;
     }
 
@@ -72,7 +73,7 @@ export const checkFriendshipStatus = async (
     );
 
     if (rpcError) {
-      console.error("RPC error:", rpcError);
+      toast.error(rpcError.message);
       return;
     }
 
@@ -102,7 +103,7 @@ export const checkFriendshipStatus = async (
       disableConnectionButton(true);
     }
   } catch (error) {
-    console.error("Error checking friendship status:", error);
+    toast.error("Error checking friendship status");
   }
 };
 
@@ -136,7 +137,6 @@ export const findMaxTeachSimilarity = (
   secondaryUserLearnSkills: number[][]
 ): number => {
   let max_teach_score = 0;
-  console.log("loggedInUserTeachSkills", loggedInUserTeachSkills);
   for (let i = 0; i < loggedInUserTeachSkills.length; i++) {
     const loggedInTeachEmbedding = loggedInUserTeachSkills[i];
 
@@ -196,7 +196,6 @@ export const calculateUserSimilarityScores = async (
     let targetUserLearnSkills: number[][] = [];
     let targetUserTeachSkills: number[][] = [];
 
-    console.log("loggedInUserSkills", loggedInUserSkills);
     loggedInUserSkills.forEach((skill) => {
       addToSkillsArray(skill, loggedInUserLearnSkills, loggedInUserTeachSkills);
     });
@@ -217,7 +216,7 @@ export const calculateUserSimilarityScores = async (
 
     return { max_learn_score, max_teach_score };
   } catch (error) {
-    console.error("Error calculating scores:", error);
+    toast.error("Error calculating scores");
     return { max_learn_score: 0, max_teach_score: 0 };
   }
 };

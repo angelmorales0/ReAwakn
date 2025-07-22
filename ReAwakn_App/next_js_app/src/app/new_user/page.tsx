@@ -35,6 +35,7 @@ export default function NewUserQuestionnaire() {
     availability: [],
     communicationStyle: "",
     timeZone: "",
+    improvementTime: "",
   });
 
   const [newTeachSkill, setNewTeachSkill] = useState("");
@@ -56,7 +57,8 @@ export default function NewUserQuestionnaire() {
       formData.chronotype !== "" &&
       formData.availability.length > 0 &&
       formData.communicationStyle !== "" &&
-      formData.timeZone !== ""
+      formData.timeZone !== "" &&
+      formData.improvementTime !== ""
     );
   };
 

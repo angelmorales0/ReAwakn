@@ -41,7 +41,6 @@ export default function ProfileHeader({
         toast.error("Failed to upload profile picture");
       }
     } catch (error) {
-      console.error("Error uploading profile picture:", error);
       toast.error("An error occurred while uploading the profile picture");
     } finally {
       setUploading(false);

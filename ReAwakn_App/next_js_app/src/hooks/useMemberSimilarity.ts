@@ -21,7 +21,7 @@ export function useMemberSimilarity(
         setMaxLearnScore(max_learn_score);
         setMaxTeachScore(max_teach_score);
       } catch (error) {
-        console.error("Error calculating similarity scores:", error);
+        alert("Error calculating similarity scores");
       }
     };
 

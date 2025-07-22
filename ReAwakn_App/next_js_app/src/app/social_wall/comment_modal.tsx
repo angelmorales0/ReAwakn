@@ -14,14 +14,9 @@ export default function CommentModal({
   setComment,
   comments = [],
 }: CommentModalProps) {
-  const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-    return () => setIsMounted(false); 
-  }, []);
 
-  if (!isModalOpen || !isMounted) return null;
+  if (!isModalOpen ) return null;
   return createPortal(
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-100">
       <div

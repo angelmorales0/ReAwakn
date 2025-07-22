@@ -17,6 +17,7 @@ export interface QuestionnaireData {
   availability: string[];
   communicationStyle: string;
   timeZone: string;
+  improvementTime: string;
 }
 
 interface UserQuestionsProps {
@@ -71,7 +72,9 @@ export default function UserQuestions({
                 setNewTeachSkill("");
               }
             }}
-            disabled={!newTeachSkill.trim() || formData.skillsToTeach.length >= 5}
+            disabled={
+              !newTeachSkill.trim() || formData.skillsToTeach.length >= 5
+            }
           >
             Add
           </Button>
@@ -87,7 +90,9 @@ export default function UserQuestions({
                 onClick={() =>
                   setFormData((prev) => ({
                     ...prev,
-                    skillsToTeach: prev.skillsToTeach.filter((_, idx) => idx !== i),
+                    skillsToTeach: prev.skillsToTeach.filter(
+                      (_, idx) => idx !== i
+                    ),
                   }))
                 }
               >
@@ -97,7 +102,10 @@ export default function UserQuestions({
             <div className="space-y-2">
               <p className="text-sm text-gray-600">Your teaching level:</p>
               {[1, 2, 3].map((lvl) => (
-                <label key={lvl} className="flex items-center space-x-2 cursor-pointer">
+                <label
+                  key={lvl}
+                  className="flex items-center space-x-2 cursor-pointer"
+                >
                   <input
                     type="radio"
                     name={`teach-${i}`}
@@ -113,9 +121,9 @@ export default function UserQuestions({
                     className="w-3 h-3"
                   />
                   <span className="text-sm">
-                    {lvl === 1 && "Beginner (1 pt)"}
-                    {lvl === 2 && "Know the basics (2 pts)"}
-                    {lvl === 3 && "Intermediate (3 pts)"}
+                    {lvl === 1 && "Beginner"}
+                    {lvl === 2 && "Know the basics"}
+                    {lvl === 3 && "Intermediate"}
                   </span>
                 </label>
               ))}
@@ -151,7 +159,9 @@ export default function UserQuestions({
                 setNewLearnSkill("");
               }
             }}
-            disabled={!newLearnSkill.trim() || formData.skillsToLearn.length >= 5}
+            disabled={
+              !newLearnSkill.trim() || formData.skillsToLearn.length >= 5
+            }
           >
             Add
           </Button>
@@ -167,7 +177,9 @@ export default function UserQuestions({
                 onClick={() =>
                   setFormData((prev) => ({
                     ...prev,
-                    skillsToLearn: prev.skillsToLearn.filter((_, idx) => idx !== i),
+                    skillsToLearn: prev.skillsToLearn.filter(
+                      (_, idx) => idx !== i
+                    ),
                   }))
                 }
               >
@@ -177,7 +189,10 @@ export default function UserQuestions({
             <div className="space-y-2">
               <p className="text-sm text-gray-600">Your current level:</p>
               {[1, 2, 3].map((lvl) => (
-                <label key={lvl} className="flex items-center space-x-2 cursor-pointer">
+                <label
+                  key={lvl}
+                  className="flex items-center space-x-2 cursor-pointer"
+                >
                   <input
                     type="radio"
                     name={`learn-${i}`}
@@ -193,9 +208,9 @@ export default function UserQuestions({
                     className="w-3 h-3"
                   />
                   <span className="text-sm">
-                    {lvl === 1 && "Complete beginner (1 pt)"}
-                    {lvl === 2 && "Know the basics (2 pts)"}
-                    {lvl === 3 && "Intermediate (3 pts)"}
+                    {lvl === 1 && "Complete beginner"}
+                    {lvl === 2 && "Know the basics"}
+                    {lvl === 3 && "Intermediate"}
                   </span>
                 </label>
               ))}
@@ -205,9 +220,14 @@ export default function UserQuestions({
       </div>
 
       <div className="space-y-4">
-        <Label className="text-lg font-semibold">5. Night owl or early bird? *</Label>
+        <Label className="text-lg font-semibold">
+          3. Night owl or early bird? *
+        </Label>
         {["early-bird", "night-owl"].map((val) => (
-          <label key={val} className="flex items-center space-x-3 cursor-pointer">
+          <label
+            key={val}
+            className="flex items-center space-x-3 cursor-pointer"
+          >
             <input
               type="radio"
               name="chronotype"
@@ -225,11 +245,15 @@ export default function UserQuestions({
 
       <div className="space-y-4">
         <Label className="text-lg font-semibold">
-          6. When are you usually available? (Pick all that apply) *
+          4. When are you usually available in your local timezone? (Pick all
+          that apply) *
         </Label>
         <div className="grid grid-cols-1 gap-3">
           {availabilityOptions.map((opt) => (
-            <label key={opt} className="flex items-center space-x-3 cursor-pointer">
+            <label
+              key={opt}
+              className="flex items-center space-x-3 cursor-pointer"
+            >
               <input
                 type="checkbox"
                 checked={formData.availability.includes(opt)}
@@ -244,27 +268,39 @@ export default function UserQuestions({
 
       <div className="space-y-4">
         <Label className="text-lg font-semibold">
-          7. Communication Style - How do you prefer to communicate? *
+          5. Communication Style - How do you prefer to communicate? *
         </Label>
         {["casual", "direct"].map((val) => (
-          <label key={val} className="flex items-center space-x-3 cursor-pointer">
+          <label
+            key={val}
+            className="flex items-center space-x-3 cursor-pointer"
+          >
             <input
               type="radio"
               name="communicationStyle"
               value={val}
               checked={formData.communicationStyle === val}
               onChange={(e) =>
-                setFormData((prev) => ({ ...prev, communicationStyle: e.target.value }))
+                setFormData((prev) => ({
+                  ...prev,
+                  communicationStyle: e.target.value,
+                }))
               }
               className="w-4 h-4"
             />
-            <span>{val === "casual" ? "Casual & conversational" : "Direct & to the point"}</span>
+            <span>
+              {val === "casual"
+                ? "Casual & conversational"
+                : "Direct & to the point"}
+            </span>
           </label>
         ))}
       </div>
 
       <div className="space-y-4">
-        <Label className="text-lg font-semibold">8. Which time zone are you in? *</Label>
+        <Label className="text-lg font-semibold">
+          6. Which time zone are you in? *
+        </Label>
         <select
           value={formData.timeZone}
           onChange={(e) =>
@@ -279,6 +315,31 @@ export default function UserQuestions({
             </option>
           ))}
         </select>
+      </div>
+      <div className="space-y-4">
+        <Label className="text-lg font-semibold">
+          7. How long would it take you to improve at these skills? *
+        </Label>
+        <div className="grid grid-cols-1 gap-3">
+          <select
+            value={formData.improvementTime}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                improvementTime: e.target.value,
+              }))
+            }
+            className="w-full p-3 border rounded-md"
+          >
+            <option value="">Select hours needed</option>
+            <option value="5">5 hours</option>
+            <option value="6">6 hours</option>
+            <option value="7">7 hours</option>
+            <option value="8">8 hours</option>
+            <option value="9">9 hours</option>
+            <option value="10">10 hours</option>
+          </select>
+        </div>
       </div>
     </div>
   );

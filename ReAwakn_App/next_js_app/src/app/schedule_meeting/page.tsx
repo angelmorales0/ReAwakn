@@ -171,7 +171,6 @@ export default function ScheduleMeetingPage() {
         });
 
         if (!response.ok) {
-          console.error("Failed to rank meeting slots");
           return availableEvents;
         }
 
@@ -191,7 +190,6 @@ export default function ScheduleMeetingPage() {
           bestSlot
         ) as RankedCalendarEvent[];
       } catch (error) {
-        console.error("Error ranking meeting slots:", error);
         return availableEvents;
       }
     } catch (error) {
@@ -237,7 +235,7 @@ export default function ScheduleMeetingPage() {
         .eq("start_time", startTimeISO);
 
       if (conflictError) {
-        console.error("Error checking for meeting conflicts:", conflictError);
+        alert("Error checking for meeting conflicts");
         throw new Error("Error checking for meeting conflicts");
       }
 
@@ -257,6 +255,7 @@ export default function ScheduleMeetingPage() {
       });
 
       if (insertError) {
+        alert("Failed to schedule meeting");
         throw new Error("Failed to schedule meeting");
       }
 
