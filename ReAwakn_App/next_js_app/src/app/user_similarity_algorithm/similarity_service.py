@@ -7,9 +7,32 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 from supabase import Client, create_client
+
+
+def cosine_similarity(user_1_data, user_2_data):
+
+    user_1_data = np.asarray(user_1_data)
+    user_2_data = np.asarray(user_2_data)
+
+    if user_1_data.ndim == 1:
+        user_1_data = user_1_data.reshape(1, -1)
+    if user_2_data.ndim == 1:
+        user_2_data = user_2_data.reshape(1, -1)
+
+    dot_product = np.dot(user_1_data, user_2_data.T)
+
+    norm_user_1 = np.linalg.norm(user_1_data, axis=1).reshape(-1, 1)
+    norm_user_2 = np.linalg.norm(user_2_data, axis=1).reshape(-1, 1)
+
+    norm_user_1 = np.maximum(norm_user_1, np.finfo(float).eps)
+    norm_user_2 = np.maximum(norm_user_2, np.finfo(float).eps)
+
+    similarities = dot_product / (np.dot(norm_user_1, norm_user_2.T))
+
+    return similarities
+
 
 load_dotenv()
 
