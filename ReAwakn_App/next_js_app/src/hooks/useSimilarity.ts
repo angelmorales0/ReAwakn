@@ -60,7 +60,6 @@ export function useSimilarity(): UseSimilarityReturn {
         throw new Error(data.error || "Failed to refresh similarity data");
       }
 
-      // No need to update similarity state as this just refreshes the backend data
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

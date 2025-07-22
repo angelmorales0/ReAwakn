@@ -1,6 +1,16 @@
 import moment from "moment-timezone";
 import { CalendarEvent } from "@/types/types";
 
+moment.tz.add([
+  "America/Los_Angeles|PST PDT|80 70|0101|1Lzm0 1zb0 Op0",
+  "America/Denver|MST MDT|70 60|0101|1Lzm0 1zb0 Op0",
+  "America/Chicago|CST CDT|60 50|0101|1Lzm0 1zb0 Op0",
+  "America/New_York|EST EDT|50 40|0101|1Lzm0 1zb0 Op0",
+  "America/Halifax|AST ADT|40 30|0101|1Lzm0 1zb0 Op0",
+  "Pacific/Honolulu|HST|a0|0|",
+  "America/Anchorage|AKST AKDT|90 80|0101|1Lzm0 1zb0 Op0",
+]);
+
 const timezoneMapping: { [key: string]: string } = {
   "Pacific Time (PT)": "America/Los_Angeles",
   "Mountain Time (MT)": "America/Denver",
@@ -66,15 +76,17 @@ export function convertToCalendarEvents(
   const events = [];
   const startDate = new Date();
 
+  const endDate = new Date();
+  endDate.setMonth(endDate.getMonth() + 1);
+
   const timezone = getIANATimezone(userTimeZone);
 
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(startDate);
-    day.setDate(startDate.getDate() + i);
-
-    // Skips weekends
+  for (
+    let day = new Date(startDate);
+    day <= endDate;
+    day.setDate(day.getDate() + 1)
+  ) {
     if (day.getDay() === 0 || day.getDay() === 6) continue;
-
     for (const slot of timeSlots) {
       const [startTime, endTime] = slot.split(" - ");
       const [startHours, startMinutes] = startTime.split(":").map(Number);

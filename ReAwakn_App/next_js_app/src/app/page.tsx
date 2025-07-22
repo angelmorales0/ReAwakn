@@ -25,7 +25,6 @@ export default function Home() {
     } = await supabase().auth.getUser();
 
     if (user && !authError) {
-      // Check if user has completed onboarding
       const { data: userData, error: dbError } = await supabase()
         .from("users")
         .select("completed_onboarding")
@@ -34,7 +33,6 @@ export default function Home() {
 
       const hasCompletedOnboarding = userData?.completed_onboarding === true;
 
-      // Determine redirect URL
       if (!hasCompletedOnboarding) {
         router.push("/new_user");
         return;

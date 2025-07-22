@@ -18,7 +18,7 @@ export default function CommentModal({
 
   useEffect(() => {
     setIsMounted(true);
-    return () => setIsMounted(false); // return only runs when you get off mount
+    return () => setIsMounted(false); 
   }, []);
 
   if (!isModalOpen || !isMounted) return null;

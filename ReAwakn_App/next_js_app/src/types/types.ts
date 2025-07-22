@@ -1,5 +1,5 @@
 export type Message = {
-  created_at: string; // These need to be kept snake case for database parsing, will be refactored at a later date
+  created_at: string;
   text: string;
   sent_by: string;
 };
@@ -148,4 +148,68 @@ export interface UserSkill {
   type: string;
   embedding: string | Record<string, number> | number[];
   skill: string;
+}
+
+export interface Meeting {
+  id: string;
+  host_id: string;
+  guest_id: string;
+  start_time: string;
+  scheduler_timezone?: string;
+  title: string;
+  is_confirmed: boolean;
+  host?: {
+    display_name?: string;
+    name?: string;
+    email?: string;
+  };
+  guest?: {
+    display_name?: string;
+    name?: string;
+    email?: string;
+  };
+}
+
+export interface CalendarMeeting {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  host_id: string;
+  guest_id: string;
+  is_confirmed: boolean;
+  scheduler_timezone?: string;
+  host?: {
+    display_name?: string;
+    name?: string;
+    email?: string;
+  };
+  guest?: {
+    display_name?: string;
+    name?: string;
+    email?: string;
+  };
+}
+
+export interface MeetingDetailsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  meeting: CalendarMeeting;
+  onConfirm: (meetingId: string) => void;
+  onCancel: (meetingId: string) => void;
+}
+
+export interface RankedSlot {
+  startUTC: string;
+  endUTC: string;
+  score: number;
+  components?: {
+    time_gap: number;
+    chronotype: number;
+  };
+}
+
+export interface RankedCalendarEvent extends CalendarEvent {
+  score?: number;
+  title?: string;
 }

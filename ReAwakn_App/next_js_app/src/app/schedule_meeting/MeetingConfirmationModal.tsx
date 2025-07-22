@@ -25,7 +25,7 @@ export default function MeetingConfirmationModal({
 
       onClose();
     } catch (error: unknown) {
-      console.error("Error submitting form:", error);
+      alert("Error submitting form:");
     } finally {
       setIsSubmitting(false);
     }
