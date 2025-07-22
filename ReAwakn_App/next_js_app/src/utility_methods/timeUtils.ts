@@ -1,3 +1,21 @@
+export const availabilityOptions = [
+  "6:00 AM - 9:00 AM",
+  "9:00 AM - 12:00 PM",
+  "12:00 PM - 3:00 PM",
+  "3:00 PM - 6:00 PM",
+  "6:00 PM - 9:00 PM",
+];
+
+export const timeZones = [
+  "Pacific Time (PT)",
+  "Mountain Time (MT)",
+  "Central Time (CT)",
+  "Eastern Time (ET)",
+  "Atlantic Time (AT)",
+  "Hawaii Time (HT)",
+  "Alaska Time (AKT)",
+];
+
 export const tzOffsets: { [key: string]: number } = {
   "Pacific Time (PT)": 8,
   "Mountain Time (MT)": 7,

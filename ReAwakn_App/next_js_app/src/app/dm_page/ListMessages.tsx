@@ -16,8 +16,7 @@ export default function ListMessages({ messages }: ListOfMessages) {
 
       if (error) {
         alert("Error Fetching Usernames");
-
-        return;
+        return [];
       }
       const namesMap = data.reduce((acc: { [key: string]: string }, user) => {
         acc[user.id] = user.display_name;

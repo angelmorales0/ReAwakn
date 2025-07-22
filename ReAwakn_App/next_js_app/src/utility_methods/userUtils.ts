@@ -1,5 +1,6 @@
 import { supabase } from "@/app/utils/supabase/client";
 import { LoggedInUser } from "@/types/types";
+import { toast } from "sonner";
 
 export const getAuthUser = async () => {
   const {
@@ -8,7 +9,9 @@ export const getAuthUser = async () => {
   } = await supabase.auth.getUser();
 
   if (authError) {
-    console.error("Auth error:", authError);
+    toast.error("Authentication error", {
+      description: authError.message,
+    });
     return null;
   }
 
@@ -49,7 +52,9 @@ export const deleteUserSkills = async (userId: string) => {
     .eq("user_id", userId);
 
   if (error) {
-    console.error("Error deleting user skills:", error);
+    toast.error("Error deleting user skills", {
+      description: error.message,
+    });
     return { success: false, error };
   }
 
@@ -72,7 +77,9 @@ export const addUserSkill = async (
   ]);
 
   if (error) {
-    console.error("Error adding user skill:", error);
+    toast.error("Error adding user skill", {
+      description: error.message,
+    });
     return { success: false, error };
   }
 
@@ -117,7 +124,9 @@ export const uploadProfilePicture = async (userId: string, file: File) => {
       });
 
     if (uploadError) {
-      console.error("Error uploading file:", uploadError);
+      toast.error("Error uploading file", {
+        description: uploadError.message,
+      });
       return { success: false, error: uploadError };
     }
 
@@ -154,7 +163,9 @@ export const getFormattedUser = async (
     } = await supabase.auth.getUser();
 
     if (authError) {
-      console.error("Auth error:", authError);
+      toast.error("Authentication error", {
+        description: authError.message,
+      });
       return null;
     }
 
@@ -169,7 +180,9 @@ export const getFormattedUser = async (
       .single();
 
     if (error) {
-      console.error("Database error:", error);
+      toast.error("Database error", {
+        description: error.message,
+      });
       return null;
     }
 
@@ -198,7 +211,9 @@ export const getFormattedUser = async (
 
     return formattedUser;
   } catch (error) {
-    console.error("Error getting current user:", error);
+    toast.error("Error getting current user", {
+      description: error instanceof Error ? error.message : "Unknown error",
+    });
     return null;
   }
 };

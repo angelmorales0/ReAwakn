@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 export async function getEmbeddingFromAPI(skill: string): Promise<number[]> {
   try {
     const response = await fetch("/embeddings", {
@@ -16,7 +18,9 @@ export async function getEmbeddingFromAPI(skill: string): Promise<number[]> {
     const data = await response.json();
     return data.embedding;
   } catch (error) {
-    console.error("Error getting embedding:", error);
+    toast.error("Error getting embedding", {
+      description: error instanceof Error ? error.message : "Unknown error",
+    });
     throw error;
   }
 }

@@ -9,7 +9,6 @@ except ImportError:
 
 def main():
     if len(sys.argv) < 2:
-        print("error", file=sys.stderr)
         sys.exit(1)
     action = sys.argv[1]
     try:

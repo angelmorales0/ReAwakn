@@ -93,12 +93,12 @@ async function calculateSimilarity(
     }
 
     return { similarity_score: similarity_score };
-  } catch (error: any) {
+  } catch (error) {
     const prefix = isGet ? "GET " : "";
-    console.error(`${prefix}Similarity calculation error:`, error);
+    alert(error);
     return {
       error: `Failed to calculate similarity: ${
-        error.message || "Unknown error"
+        (error as Error).message || "Unknown error"
       }`,
     };
   }
@@ -176,7 +176,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error(error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
