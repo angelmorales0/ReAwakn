@@ -136,7 +136,7 @@ export const findMaxTeachSimilarity = (
   secondaryUserLearnSkills: number[][]
 ): number => {
   let max_teach_score = 0;
-
+  console.log("loggedInUserTeachSkills", loggedInUserTeachSkills);
   for (let i = 0; i < loggedInUserTeachSkills.length; i++) {
     const loggedInTeachEmbedding = loggedInUserTeachSkills[i];
 
@@ -196,6 +196,7 @@ export const calculateUserSimilarityScores = async (
     let targetUserLearnSkills: number[][] = [];
     let targetUserTeachSkills: number[][] = [];
 
+    console.log("loggedInUserSkills", loggedInUserSkills);
     loggedInUserSkills.forEach((skill) => {
       addToSkillsArray(skill, loggedInUserLearnSkills, loggedInUserTeachSkills);
     });

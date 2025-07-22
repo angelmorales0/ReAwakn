@@ -30,6 +30,7 @@ export interface MatchUser {
   email?: string;
   maxLearnScore?: number;
   maxTeachScore?: number;
+  profilePicUrl?: string;
 }
 
 export interface CommentModalProps {
@@ -61,6 +62,7 @@ export interface Member {
   id: string;
   name: string;
   email?: string;
+  profilePicUrl?: string;
 }
 
 export interface MemberWithSimilarity extends Member {
@@ -68,6 +70,7 @@ export interface MemberWithSimilarity extends Member {
   similarityLoading?: boolean;
   maxLearnScore?: number;
   maxTeachScore?: number;
+  profilePicUrl?: string;
 }
 
 export interface LoggedInUser {

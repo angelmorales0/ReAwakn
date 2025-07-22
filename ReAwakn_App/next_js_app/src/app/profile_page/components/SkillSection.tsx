@@ -1,10 +1,16 @@
+import { useState } from "react";
 import SkillBadge from "./SkillBadge";
-
+import { addUserSkill, removeUserSkill } from "@/utility_methods/userUtils";
+import { toast } from "sonner";
+import { getEmbeddingFromAPI } from "@/utility_methods/embeddingUtils";
 interface SkillSectionProps {
   title: string;
   skills: string[];
   icon: "teaching" | "learning";
   emptyMessage: string;
+  isOwnProfile?: boolean;
+  userId: string;
+  skillType: "teach" | "learn";
 }
 
 export default function SkillSection({
@@ -12,7 +18,13 @@ export default function SkillSection({
   skills,
   icon,
   emptyMessage,
+  isOwnProfile = false,
+  userId,
+  skillType,
 }: SkillSectionProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newSkill, setNewSkill] = useState("");
+  const [localSkills, setLocalSkills] = useState<string[]>(skills);
   const iconColors = {
     teaching:
       "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400",
@@ -37,30 +49,139 @@ export default function SkillSection({
     />
   );
 
+  const handleAddSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newSkill.trim()) {
+      toast.error("Skill cannot be empty");
+      return;
+    }
+
+    if (localSkills.includes(newSkill.trim())) {
+      toast.error("This skill already exists");
+      return;
+    }
+
+    if (localSkills.length >= 5) {
+      toast.error("You can only have up to 5 skills");
+      return;
+    }
+
+    try {
+      const embedding = await getEmbeddingFromAPI(newSkill.trim());
+      const result = await addUserSkill(
+        userId,
+        newSkill.trim(),
+        skillType,
+        embedding
+      );
+
+      if (result.success) {
+        setLocalSkills([...localSkills, newSkill.trim()]);
+        setNewSkill("");
+        setIsAdding(false);
+        toast.success("Skill added successfully");
+      } else {
+        toast.error("Failed to add skill");
+      }
+    } catch (error) {
+      console.error("Error adding skill:", error);
+      toast.error("An error occurred while adding the skill");
+    }
+  };
+
+  const handleRemoveSkill = async (skillToRemove: string) => {
+    try {
+      const result = await removeUserSkill(userId, skillToRemove, skillType);
+
+      if (result.success) {
+        setLocalSkills(localSkills.filter((skill) => skill !== skillToRemove));
+        toast.success("Skill removed successfully");
+      } else {
+        toast.error("Failed to remove skill");
+      }
+    } catch (error) {
+      console.error("Error removing skill:", error);
+      toast.error("An error occurred while removing the skill");
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center space-x-3">
-        <div
-          className={`w-8 h-8 ${iconColors[icon]} rounded-full flex items-center justify-center`}
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div
+            className={`w-8 h-8 ${iconColors[icon]} rounded-full flex items-center justify-center`}
           >
-            {icon === "teaching" ? teachingIcon : learningIcon}
-          </svg>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              {icon === "teaching" ? teachingIcon : learningIcon}
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+            {title}
+          </h3>
         </div>
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-          {title}
-        </h3>
+
+        {isOwnProfile && !isAdding && localSkills.length < 5 && (
+          <button
+            onClick={() => setIsAdding(true)}
+            className="text-sm bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md transition-colors"
+          >
+            Add Skill
+          </button>
+        )}
       </div>
+
       <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 min-h-[120px]">
-        {skills.length > 0 ? (
+        {isAdding && (
+          <form onSubmit={handleAddSkill} className="mb-4 flex">
+            <input
+              type="text"
+              value={newSkill}
+              onChange={(e) => setNewSkill(e.target.value)}
+              placeholder="Enter a skill..."
+              className="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxLength={50}
+            />
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdding(false);
+                setNewSkill("");
+              }}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md ml-2"
+            >
+              Cancel
+            </button>
+          </form>
+        )}
+
+        {localSkills.length > 0 ? (
           <div className="flex flex-wrap">
-            {skills.map((skill, index) => (
-              <SkillBadge key={index} skill={skill} />
+            {localSkills.map((skill, index) => (
+              <div key={index} className="relative group">
+                <SkillBadge skill={skill} />
+                {isOwnProfile && (
+                  <button
+                    onClick={() => handleRemoveSkill(skill)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Remove skill"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         ) : (

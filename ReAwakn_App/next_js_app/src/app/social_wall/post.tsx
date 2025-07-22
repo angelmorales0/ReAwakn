@@ -11,6 +11,7 @@ type Post = {
   caption: string;
   title: string;
   author_name: string;
+  author_profile_pic?: string;
 };
 
 interface PostProps {
@@ -192,9 +193,19 @@ export default function PostCard({ post, formatDate }: PostProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 transform hover:-translate-y-1">
       <div className="flex items-center p-4 border-b border-gray-100">
-        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex-shrink-0 flex items-center justify-center text-white font-bold">
-          {post.author_name.substring(0, 1).toUpperCase()}
-        </div>
+        {post.author_profile_pic ? (
+          <div className="h-10 w-10 rounded-full flex-shrink-0 overflow-hidden">
+            <img
+              src={post.author_profile_pic}
+              alt={`${post.author_name}'s profile`}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex-shrink-0 flex items-center justify-center text-white font-bold">
+            {post.author_name.substring(0, 1).toUpperCase()}
+          </div>
+        )}
         <div className="ml-3">
           <p className="font-medium text-sm text-gray-700">
             {post.author_name.substring(0, 6)}

@@ -10,6 +10,7 @@ type Post = {
   caption: string;
   title: string;
   author_name: string;
+  author_profile_pic?: string;
 };
 
 export default function SocialWall() {
@@ -18,17 +19,58 @@ export default function SocialWall() {
 
   const getPosts = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("posts")
-      .select("id,created_at,author_id, caption, title, author_name")
-      .order("created_at", { ascending: false });
+    try {
+      const { data: postsData, error: postsError } = await supabase
+        .from("posts")
+        .select("id, created_at, author_id, caption, title, author_name")
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      alert("Error loading posts: " + error.message);
-    } else {
-      setPosts(data ?? []);
+      if (postsError) {
+        alert("Error loading posts: " + postsError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!postsData || postsData.length === 0) {
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      const authorIds = postsData.map((post) => post.author_id);
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("id, profile_pic_url")
+        .in("id", authorIds);
+
+      if (usersError) {
+        console.error(
+          "Error loading user profile pictures:",
+          usersError.message
+        );
+      }
+
+      const profilePicMap = new Map();
+      if (usersData) {
+        usersData.forEach((user) => {
+          if (user.profile_pic_url) {
+            profilePicMap.set(user.id, user.profile_pic_url);
+          }
+        });
+      }
+
+      const postsWithProfilePics = postsData.map((post) => ({
+        ...post,
+        author_profile_pic: profilePicMap.get(post.author_id) || undefined,
+      }));
+
+      setPosts(postsWithProfilePics);
+    } catch (error) {
+      console.error("Error in getPosts:", error);
+      alert("An error occurred while loading posts");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {

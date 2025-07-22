@@ -11,8 +11,6 @@ import LoadingState from "./components/LoadingState";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [teachingSkillsData, setTeachingSkillsData] = useState<string[]>([]);
-  const [learningSkillsData, setLearningSkillsData] = useState<string[]>([]);
   const [isOwnProfile, setIsOwnProfile] = useState<boolean>(true);
   const router = useRouter();
 
@@ -44,9 +42,6 @@ export default function ProfilePage() {
         const learningSkills = skillsData
           .filter((skill) => skill.type === "learn")
           .map((skill) => skill.skill);
-
-        setTeachingSkillsData(teachingSkills);
-        setLearningSkillsData(learningSkills);
 
         const { data: targetUserData, error } = await supabase
           .from("users")
@@ -86,7 +81,7 @@ export default function ProfilePage() {
   return (
     <ProfileLayout>
       <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} />
-      <ProfileContent profile={profile} />
+      <ProfileContent profile={profile} isOwnProfile={isOwnProfile} />
     </ProfileLayout>
   );
 }

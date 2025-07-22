@@ -12,11 +12,34 @@ export default function DmPage() {
   const [convoId, setConvoId] = useState<string | null>(null);
   const [isListUpdated, setIsListUpdated] = useState(true);
   const [name, setName] = useState<string>("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [profilePicUrl, setProfilePicUrl] = useState<string | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setConvoId(params.get("id"));
     setName(params.get("user") || "");
+    const userId = params.get("userId");
+    setUserId(userId);
+
+    if (userId) {
+      const fetchUserProfile = async () => {
+        const { data, error } = await supabase
+          .from("users")
+          .select("profile_pic_url")
+          .eq("id", userId)
+          .single();
+
+        if (data && !error) {
+          setProfilePicUrl(data.profile_pic_url);
+        }
+      };
+
+      fetchUserProfile();
+    }
+
     const channel = supabase
       .channel("public:messages")
       .on(
@@ -53,7 +76,7 @@ export default function DmPage() {
   return (
     <div className="max-w-3xl mx-auto md:py-10 h-screen">
       <div className=" h-full border rounded-md flex flex-col ">
-        <ChatHeader name={name} />
+        <ChatHeader name={name} profilePicUrl={profilePicUrl} />
         <ChatMessage messages={messages} />
         <ChatInput refreshMessages={fetchMessages} />
       </div>

@@ -56,6 +56,94 @@ export const deleteUserSkills = async (userId: string) => {
   return { success: true };
 };
 
+export const addUserSkill = async (
+  userId: string,
+  skill: string,
+  type: "teach" | "learn",
+  embedding: number[]
+) => {
+  const { data, error } = await supabase.from("user_skills").insert([
+    {
+      user_id: userId,
+      skill: skill,
+      type: type,
+      embedding: embedding,
+    },
+  ]);
+
+  if (error) {
+    console.error("Error adding user skill:", error);
+    return { success: false, error };
+  }
+
+  return { success: true, data };
+};
+
+export const removeUserSkill = async (
+  userId: string,
+  skill: string,
+  type: "teach" | "learn"
+) => {
+  const { error } = await supabase
+    .from("user_skills")
+    .delete()
+    .eq("user_id", userId)
+    .eq("skill", skill)
+    .eq("type", type);
+
+  if (error) {
+    alert("Error removing user skill");
+    return { success: false, error };
+  }
+  return { success: true };
+};
+
+export const uploadProfilePicture = async (userId: string, file: File) => {
+  try {
+    if (!file.type.startsWith("image/")) {
+      return { success: false, error: "File must be an image" };
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return { success: false, error: "Image size should be less than 5MB" };
+    }
+
+    const filePath = `${userId}/pfp/${file.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("profilepics")
+      .upload(filePath, file, {
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Error uploading file:", uploadError);
+      return { success: false, error: uploadError };
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("profilepics")
+      .getPublicUrl(filePath);
+
+    const publicUrl = publicUrlData.publicUrl;
+
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ profile_pic_url: publicUrl })
+      .eq("id", userId);
+
+    if (updateError) {
+      alert("Error updating user profile picture");
+      return { success: false, error: updateError };
+    }
+
+    return { success: true, profilePicUrl: publicUrl };
+  } catch (error) {
+    alert("Error uploading profile picture");
+    return { success: false, error };
+  }
+};
+
 export const getFormattedUser = async (
   setUser?: React.Dispatch<React.SetStateAction<LoggedInUser | null>>
 ) => {

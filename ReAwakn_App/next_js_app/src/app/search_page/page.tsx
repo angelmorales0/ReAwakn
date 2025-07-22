@@ -42,6 +42,7 @@ export default function SearchPage() {
           id: user.id,
           name: user.display_name,
           email: user.email,
+          profilePicUrl: user.profile_pic_url,
           similarityScore: similarityScores.get(user.id) || undefined,
           similarityLoading: false,
         }));

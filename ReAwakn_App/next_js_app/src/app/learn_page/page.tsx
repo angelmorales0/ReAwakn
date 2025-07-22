@@ -44,6 +44,7 @@ export default function LearnPage() {
               id: user.id,
               name: user.display_name,
               email: user.email,
+              profilePicUrl: user.profile_pic_url,
               maxLearnScore: max_learn_score,
               maxTeachScore: max_teach_score,
             };
@@ -60,7 +61,7 @@ export default function LearnPage() {
         } else if (filter === "teach") {
           filteredMembers = usersWithTags.filter(
             (member) =>
-              member.maxTeachScore !== undefined && member.maxTeachScore >= 0.7
+              member.maxTeachScore !== undefined && member.maxTeachScore >= 0.85
           );
         }
         setMembers(filteredMembers);
