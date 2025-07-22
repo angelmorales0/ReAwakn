@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/card";
 import { getEmbeddingFromAPI } from "@/utility_methods/embeddingUtils";
 import { supabase } from "@/app/utils/supabase/client";
-import { convertAvailabilityToUTC } from "@/utility_methods/timeUtils";
+import {
+  convertAvailabilityToUTC,
+  availabilityOptions,
+  timeZones,
+} from "@/utility_methods/timeUtils";
 import {
   getAuthUser,
   updateUserAvailability,
@@ -35,24 +39,6 @@ export default function NewUserQuestionnaire() {
 
   const [newTeachSkill, setNewTeachSkill] = useState("");
   const [newLearnSkill, setNewLearnSkill] = useState("");
-
-  const availabilityOptions = [
-    "6:00 AM - 9:00 AM",
-    "9:00 AM - 12:00 PM",
-    "12:00 PM - 3:00 PM",
-    "3:00 PM - 6:00 PM",
-    "6:00 PM - 9:00 PM",
-  ];
-
-  const timeZones = [
-    "Pacific Time (PT)",
-    "Mountain Time (MT)",
-    "Central Time (CT)",
-    "Eastern Time (ET)",
-    "Atlantic Time (AT)",
-    "Hawaii Time (HT)",
-    "Alaska Time (AKT)",
-  ];
 
   const handleAvailabilityChange = (option: string) => {
     setFormData((prev) => ({

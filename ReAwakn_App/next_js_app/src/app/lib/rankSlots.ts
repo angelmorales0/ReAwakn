@@ -29,19 +29,19 @@ interface RankedSlot extends Slot {
 }
 
 function scoreTimeGap(startUTC: string, nowMS = Date.now()): number {
-  const halfLife = 3 * 24 * 60; 
+  const halfLife = 3 * 24 * 60;
   const maxWindow = 14 * 24 * 60;
   const leadMin = (Date.parse(startUTC) - nowMS) / 60000;
   if (leadMin <= 0 || leadMin > maxWindow) return 0;
   return Math.exp((-leadMin * Math.log(2)) / halfLife);
 }
 
-function getChronotypeScore(c: Chronotype, hour: number): number {
-  if (c === "early_bird") {
+function getChronotypeScore(chronotype: Chronotype, hour: number): number {
+  if (chronotype === "early_bird") {
     const dist = Math.abs(hour - 9);
     return hour >= 6 && hour < 12 ? Math.max(0, 1 - dist / 3) : 0;
   }
-  if (c === "night_owl") {
+  if (chronotype === "night_owl") {
     const dist = Math.abs(hour - 21);
     return hour >= 19 && hour < 24 ? Math.max(0, 1 - dist / 2) : 0;
   }
@@ -64,12 +64,12 @@ function scoreDensity(slot: Slot, u1: User, u2: User): number {
     return 0.5;
   }
 
-  const allMeetings: ExistingMeeting[] = [
+  const bothUsersExistingMeetings: ExistingMeeting[] = [
     ...(u1.existingMeetings || []),
     ...(u2.existingMeetings || []),
   ];
 
-  if (allMeetings.length === 0) {
+  if (bothUsersExistingMeetings.length === 0) {
     return 1.0;
   }
 
@@ -79,7 +79,7 @@ function scoreDensity(slot: Slot, u1: User, u2: User): number {
   let minBefore = Number.MAX_SAFE_INTEGER;
   let minAfter = Number.MAX_SAFE_INTEGER;
 
-  allMeetings.forEach((meeting) => {
+  bothUsersExistingMeetings.forEach((meeting) => {
     const meetingStart = moment.utc(meeting.startUTC);
     const meetingEnd = moment.utc(meeting.endUTC);
 
@@ -122,25 +122,23 @@ function scoreDensity(slot: Slot, u1: User, u2: User): number {
 
 export function rankSlots(u1: User, u2: User, slots: Slot[]): RankedSlot[] {
   return slots
-    .map((s) => {
-      const tg = scoreTimeGap(s.startUTC);
-      const chronotype_score = scoreChronotype(u1, u2, s.startUTC);
-      const density_score = scoreDensity(s, u1, u2);
+    .map((meeting_slot) => {
+      const timegap_score = scoreTimeGap(meeting_slot.startUTC);
+      const chronotype_score = scoreChronotype(u1, u2, meeting_slot.startUTC);
+      const density_score = scoreDensity(meeting_slot, u1, u2);
 
-      const score = 0.4 * tg + 0.3 * chronotype_score + 0.3 * density_score;
+      const score =
+        0.4 * timegap_score + 0.3 * chronotype_score + 0.3 * density_score;
 
       return {
-        ...s,
+        ...meeting_slot,
         score,
         components: {
-          time_gap: tg,
+          time_gap: timegap_score,
           chronotype: chronotype_score,
           density: density_score,
         },
       };
     })
-    .sort(
-      (a, b) =>
-        b.score - a.score || Date.parse(a.startUTC) - Date.parse(b.startUTC)
-    );
+    .sort((a, b) => (b.score + a.score) / 2);
 }
