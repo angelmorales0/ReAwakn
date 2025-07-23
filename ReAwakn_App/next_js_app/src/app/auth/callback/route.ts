@@ -8,9 +8,11 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     try {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      const { error: _error } = await supabase.auth.exchangeCodeForSession(
+        code
+      );
 
-      if (!error) {
+      if (!_error) {
         const forwardedHost = request.headers.get("x-forwarded-host");
         const isLocalEnv = process.env.NODE_ENV === "development";
 
@@ -23,10 +25,10 @@ export async function GET(request: NextRequest) {
         }
       } else {
         return NextResponse.redirect(
-          `${origin}/error?message=${encodeURIComponent(error.message)}`
+          `${origin}/error?message=${encodeURIComponent(_error.message)}`
         );
       }
-    } catch (err) {
+    } catch (_error) {
       return NextResponse.redirect(
         `${origin}/error?message=${encodeURIComponent("Authentication failed")}`
       );

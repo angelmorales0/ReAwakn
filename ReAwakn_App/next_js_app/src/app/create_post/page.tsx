@@ -31,7 +31,7 @@ export default function CreatePost() {
       return;
     }
 
-    const { data, error } = await supabase.from("posts").insert([
+    const { error } = await supabase.from("posts").insert([
       {
         author_id: user.id,
         title: title,

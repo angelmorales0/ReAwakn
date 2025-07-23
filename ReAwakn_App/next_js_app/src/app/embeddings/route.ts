@@ -39,14 +39,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
-
-    const embedding = data;
+    const embedding = await response.json();
 
     return NextResponse.json({ embedding: embedding });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to generate embedding", details: error.message },
+      { error: "Failed to generate embedding", details: errorMessage },
       { status: 500 }
     );
   }

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import ChatHeader from "./ChatHeader";
 import ChatInput from "./ChatInput";
 import ChatMessage from "./ChatMessage";
@@ -57,7 +57,7 @@ export default function DmPage() {
     };
   }, []);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     const { data, error } = await supabase
       .from("messages")
       .select("created_at, text, sent_by")
@@ -69,11 +69,11 @@ export default function DmPage() {
       setMessages(data);
       setIsListUpdated(true);
     }
-  };
+  }, [convoId]);
 
   useEffect(() => {
     fetchMessages();
-  }, [convoId, isListUpdated]);
+  }, [convoId, isListUpdated, fetchMessages]);
 
   return (
     <div className="max-w-3xl mx-auto md:py-10 h-screen">
