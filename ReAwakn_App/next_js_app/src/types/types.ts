@@ -234,7 +234,7 @@ export interface DatabaseMeeting {
   host_id: string;
   guest_id: string;
   start_time: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface MeetingRankerRequestBody {

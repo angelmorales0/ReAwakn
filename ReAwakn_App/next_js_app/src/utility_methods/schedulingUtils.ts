@@ -113,6 +113,7 @@ export function convertToCalendarEvents(
       const localStart = utcStart.clone().tz(timezone);
       const localEnd = utcEnd.clone().tz(timezone);
 
+      // eslint-disable-next-line prefer-const
       let slotStart = localStart.clone();
 
       while (

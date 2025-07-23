@@ -25,8 +25,8 @@ export const addToSkillsArray = (
         const embeddingArray = keys.map((key) => embedding[key]);
         learnSkillsArray.push(embeddingArray);
       }
-    } catch (error) {
-      alert(error);
+    } catch (err) {
+      alert(err);
     }
   } else if (skill.type === "teach" && skill.embedding) {
     try {
@@ -191,10 +191,10 @@ export const calculateUserSimilarityScores = async (
       return { max_learn_score: 0, max_teach_score: 0 };
     }
 
-    let loggedInUserLearnSkills: number[][] = [];
-    let loggedInUserTeachSkills: number[][] = [];
-    let targetUserLearnSkills: number[][] = [];
-    let targetUserTeachSkills: number[][] = [];
+    const loggedInUserLearnSkills: number[][] = [];
+    const loggedInUserTeachSkills: number[][] = [];
+    const targetUserLearnSkills: number[][] = [];
+    const targetUserTeachSkills: number[][] = [];
 
     loggedInUserSkills.forEach((skill) => {
       addToSkillsArray(skill, loggedInUserLearnSkills, loggedInUserTeachSkills);
@@ -215,7 +215,7 @@ export const calculateUserSimilarityScores = async (
     );
 
     return { max_learn_score, max_teach_score };
-  } catch (error) {
+  } catch (err) {
     toast.error("Error calculating scores");
     return { max_learn_score: 0, max_teach_score: 0 };
   }

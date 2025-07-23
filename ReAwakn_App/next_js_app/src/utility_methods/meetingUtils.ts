@@ -31,9 +31,14 @@ export function filterAvailableEvents(
   );
 }
 
+interface UserData {
+  time_zone?: string;
+  chronotype?: string;
+}
+
 export function prepareUserForRanking(
   userId: string,
-  userData: any
+  userData: UserData
 ): { user_id: string; timezone: string; chronotype: string } {
   return {
     user_id: userId,
