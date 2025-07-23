@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/app/utils/supabase/client";
-import CommentModal from "./comment_modal";
+import { Textarea } from "@/components/ui/textarea";
 
 type Post = {
   id: string;
@@ -20,7 +20,8 @@ interface PostProps {
 }
 
 export default function PostCard({ post, formatDate }: PostProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showAllComments, setShowAllComments] = useState(false);
+  const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [commentList, setCommentList] = useState<
     Array<{ author_name: string | null; post_content: string }>
@@ -68,7 +69,6 @@ export default function PostCard({ post, formatDate }: PostProps) {
         return;
       }
 
-      setIsModalOpen(false);
       setCommentText("");
       getComments();
     } catch (error) {
@@ -193,7 +193,7 @@ export default function PostCard({ post, formatDate }: PostProps) {
   };
   return (
     <div
-      className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 transform hover:-translate-y-1 ${
+      className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 transform hover:-translate-y-1 min-w-md ${
         isAlreadyLiked ? "cursor-broken-heart" : "cursor-heart"
       }`}
       onDoubleClick={handleLike}
@@ -235,8 +235,8 @@ export default function PostCard({ post, formatDate }: PostProps) {
         )}
       </div>
 
-      <div className="px-4 py-3 border-t border-gray-100 flex justify-between items-center">
-        <div className="flex space-x-4">
+      <div className="px-4 py-3 border-t border-gray-100">
+        <div className="flex justify-center space-x-26">
           <Button
             variant="ghost"
             size="sm"
@@ -254,8 +254,8 @@ export default function PostCard({ post, formatDate }: PostProps) {
             size="sm"
             className="flex items-center space-x-1 text-gray-600 hover:text-blue-500"
             onClick={() => {
-              setIsModalOpen(true);
               getComments();
+              setShowCommentInput(!showCommentInput);
             }}
           >
             <span>💬</span>
@@ -263,18 +263,60 @@ export default function PostCard({ post, formatDate }: PostProps) {
             <span>{commentList.length}</span>
           </Button>
         </div>
+      </div>
 
-        <span className="text-xs text-gray-400">
-          {formatDate(post.created_at)}
-        </span>
-        <CommentModal
-          isModalOpen={isModalOpen}
-          setIsModalOpen={setIsModalOpen}
-          handleSubmitComment={handleSubmitComment}
-          comment={commentText}
-          setComment={setCommentText}
-          comments={commentList}
-        />
+      <div className="px-4 py-3 border-t border-gray-100">
+        <div className="mb-3">
+          {commentList.length > 0 ? (
+            <>
+              {(showAllComments ? commentList : commentList.slice(0, 1)).map(
+                (comment, index) => (
+                  <div key={index} className="mb-3 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-700">
+                      {comment.author_name || ""}
+                    </p>
+                    <p className="text-gray-600">{comment.post_content}</p>
+                  </div>
+                )
+              )}
+
+              {commentList.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-500 hover:text-blue-700 text-sm"
+                  onClick={() => setShowAllComments(!showAllComments)}
+                >
+                  {showAllComments
+                    ? "Show less"
+                    : `Show ${commentList.length - 1} more comments`}
+                </Button>
+              )}
+            </>
+          ) : (
+            <p className="text-gray-500 text-sm py-2">No comments yet</p>
+          )}
+        </div>
+
+        {showCommentInput && (
+          <div className="mt-3">
+            <Textarea
+              className="min-h-[80px] mb-2 resize-none focus:ring-blue-500 text-sm"
+              placeholder="Write your comment here..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+            />
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSubmitComment}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                size="sm"
+              >
+                Post Comment
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
