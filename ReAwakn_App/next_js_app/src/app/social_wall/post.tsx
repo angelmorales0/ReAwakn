@@ -131,6 +131,7 @@ export default function PostCard({ post, formatDate }: PostProps) {
       }
     };
     getLikeCount();
+    getComments();
     checkIfLiked();
   }, []);
 
@@ -259,6 +260,7 @@ export default function PostCard({ post, formatDate }: PostProps) {
           >
             <span>💬</span>
             <span>Comment</span>
+            <span>{commentList.length}</span>
           </Button>
         </div>
 
