@@ -1,12 +1,19 @@
 import { UserProfile } from "@/types/types";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
-import { uploadProfilePicture } from "@/utility_methods/userUtils";
+import { useState, useRef, useEffect } from "react";
+import { uploadProfilePicture, getAuthUser } from "@/utility_methods/userUtils";
+import { supabase } from "@/app/utils/supabase/client";
 import { toast } from "sonner";
+import { useMemberInteractions } from "@/hooks/useMemberInteractions";
 
 interface ProfileHeaderProps {
   profile: UserProfile;
   isOwnProfile?: boolean;
+}
+
+interface UserTimeZone {
+  time_zone?: string;
+  chronotype?: string;
 }
 
 export default function ProfileHeader({
@@ -20,6 +27,37 @@ export default function ProfileHeader({
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [userTimeZone, setUserTimeZone] = useState<UserTimeZone>({});
+
+  const {
+    isFriends,
+    isPendingRequest,
+    isDisabled,
+    sendConnectionRequest,
+    enterDM,
+  } = useMemberInteractions(profile.id);
+
+  useEffect(() => {
+    if (isOwnProfile) return;
+
+    const fetchUserTimeZone = async () => {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("time_zone, chronotype")
+          .eq("id", profile.id)
+          .single();
+
+        if (data) {
+          setUserTimeZone(data);
+        }
+      } catch (error) {
+        alert(error);
+      }
+    };
+
+    fetchUserTimeZone();
+  }, [isOwnProfile, profile.id]);
   const handleProfilePictureClick = () => {
     if (isOwnProfile && !uploading) {
       fileInputRef.current?.click();
@@ -150,14 +188,73 @@ export default function ProfileHeader({
         <p className="text-blue-100 text-lg mb-4">{profile.email}</p>
 
         {!isOwnProfile && (
-          <button
-            onClick={() =>
-              router.push(`/schedule_meeting?userId=${profile.id}`)
-            }
-            className="px-6 py-2 bg-white text-purple-600 font-medium rounded-full hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-600"
-          >
-            Schedule Meeting
-          </button>
+          <div className="flex flex-col items-center space-y-3">
+            <div className="flex space-x-3">
+              <button
+                onClick={() =>
+                  router.push(`/schedule_meeting?userId=${profile.id}`)
+                }
+                className="px-6 py-2 bg-white text-purple-600 font-medium rounded-full hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-600"
+              >
+                Schedule Meeting
+              </button>
+
+              {isFriends ? (
+                <button
+                  onClick={() => enterDM(profile.displayName)}
+                  className="px-6 py-2 bg-green-500 text-white font-medium rounded-full hover:bg-green-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-600"
+                >
+                  Message
+                </button>
+              ) : isPendingRequest ? (
+                <button
+                  onClick={sendConnectionRequest}
+                  className="px-6 py-2 bg-blue-500 text-white font-medium rounded-full hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-600"
+                >
+                  Accept Request
+                </button>
+              ) : (
+                <button
+                  onClick={sendConnectionRequest}
+                  disabled={isDisabled}
+                  className={`px-6 py-2 font-medium rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-600 ${
+                    isDisabled
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-blue-500 text-white hover:bg-blue-600"
+                  }`}
+                >
+                  {isDisabled ? "Request Sent" : "Connect"}
+                </button>
+              )}
+            </div>
+
+            {userTimeZone?.time_zone && (
+              <div className="text-white bg-purple-700 bg-opacity-50 px-4 py-1 rounded-full text-sm flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                {userTimeZone.time_zone}
+                {userTimeZone.chronotype && (
+                  <span className="ml-2 bg-purple-800 px-2 py-0.5 rounded-full text-xs">
+                    {userTimeZone.chronotype === "early_bird"
+                      ? "Early Bird"
+                      : "Night Owl"}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

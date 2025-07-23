@@ -1,10 +1,19 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { ListOfMessages } from "@/types/types";
 import { supabase } from "@/app/utils/supabase/client";
 
 export default function ListMessages({ messages }: ListOfMessages) {
   const [userNames, setUserNames] = useState<{ [key: string]: string }>({});
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     const fetchUserNamesForMessages = async () => {
@@ -50,6 +59,7 @@ export default function ListMessages({ messages }: ListOfMessages) {
             </div>
           );
         })}
+        <div ref={messagesEndRef} />
       </div>
     </div>
   );

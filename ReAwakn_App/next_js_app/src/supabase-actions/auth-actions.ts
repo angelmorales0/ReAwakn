@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import createClient from "@/app/utils/supabase/server";
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
+
 
   const data = {
     email: formData.get("email") as string,
@@ -27,6 +27,7 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient();
 
+
   const firstName = formData.get("first-name") as string;
   const lastName = formData.get("last-name") as string;
   const data = {
@@ -37,7 +38,6 @@ export async function signup(formData: FormData) {
         full_name: `${firstName + " " + lastName}`,
         email: formData.get("email") as string,
       },
-      emailRedirectTo: `${siteUrl}/auth/callback`,
     },
   };
 
@@ -66,7 +66,7 @@ export async function signInWithGithub() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "github",
     options: {
-      redirectTo: `${siteUrl}/auth/callback`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     },
   });
 
