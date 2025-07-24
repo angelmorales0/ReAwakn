@@ -103,7 +103,7 @@ export default function MemberCard({
                   : "bg-blue-500 hover:bg-blue-600 focus:ring-blue-500"
               }`}
             >
-              Connect
+              {isDisabled ? "Connection Pending" : "Connect"}
             </button>
           )}
           <button

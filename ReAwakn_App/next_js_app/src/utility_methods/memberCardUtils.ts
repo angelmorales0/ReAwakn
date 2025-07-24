@@ -100,7 +100,7 @@ export const checkFriendshipStatus = async (
 
     setIsFriends(isMutualFriends);
 
-    if (!iRequestedOtherUser) {
+    if (!iRequestedOtherUser || iRequestedOtherUser.length === 0) {
       disableConnectionButton(false);
     } else {
       disableConnectionButton(true);
@@ -173,6 +173,31 @@ export const getSimilarityLabel = (score: number): string => {
   if (score >= 0.4) return "Good Match";
   if (score >= 0.2) return "Fair Match";
   return "Low Match";
+};
+
+export const areFriends = async (
+  userId: string,
+  targetId: string
+): Promise<boolean> => {
+  try {
+    const { data: isMutualFriends, error: rpcError } = await supabase.rpc(
+      "are_friends",
+      {
+        owner_id: userId,
+        friend_id: targetId,
+      }
+    );
+
+    if (rpcError) {
+      alert("Error checking friendship status:");
+      return false;
+    }
+
+    return !!isMutualFriends;
+  } catch (error) {
+    alert("Error checking friendship status:");
+    return false;
+  }
 };
 
 export const calculateUserSimilarityScores = async (
