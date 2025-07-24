@@ -78,7 +78,7 @@ export function useMemberInteractions(memberId: string) {
   };
 
   const scheduleMeeting = () => {
-    router.push(`/schedule_meeting?userId=${memberId}`);
+    router.push(`/meetings?userId=${memberId}`);
   };
 
   return {

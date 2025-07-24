@@ -66,9 +66,7 @@ export default function ListMessages({ messages }: ListOfMessages) {
                 ) : (
                   <div className="h-full w-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
                     <span className="text-white font-semibold text-sm">
-                      {userData[message.sent_by]?.name
-                        ?.charAt(0)
-                        .toUpperCase()}
+                      {userData[message.sent_by]?.name?.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
