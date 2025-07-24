@@ -17,7 +17,10 @@ import {
   prepareSlotsForRanking,
   markTopMeetingSlots,
 } from "@/utility_methods/meetingUtils";
-import { calculateUserSimilarityScores } from "@/utility_methods/memberCardUtils";
+import {
+  calculateUserSimilarityScores,
+  areFriends,
+} from "@/utility_methods/memberCardUtils";
 import { CalendarUser, RankedCalendarEvent } from "@/types/types";
 
 import { getAuthUser } from "@/utility_methods/userUtils";
@@ -41,12 +44,15 @@ function ScheduleMeetingContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [teachingHours, setTeachingHours] = useState<number>(0);
   const [matchingSkill, setMatchingSkill] = useState<string>("");
+  const [usersAreFriends, setUsersAreFriends] = useState<boolean>(false);
+  const [checkingFriendship, setCheckingFriendship] = useState<boolean>(true);
 
   const userTimeZone = useUserTimezone(loggedInUser);
 
   useEffect(() => {
     const fetchUsers = async () => {
       setIsLoading(true);
+      setCheckingFriendship(true);
 
       const user = await getAuthUser();
 
@@ -71,6 +77,10 @@ function ScheduleMeetingContent() {
           .single();
 
         setTargetUser(targetUserData);
+
+        const friendshipStatus = await areFriends(user.id, targetUserId);
+        setUsersAreFriends(friendshipStatus);
+        setCheckingFriendship(false);
 
         if (loggedInUserData && targetUserData) {
           try {
@@ -290,10 +300,47 @@ function ScheduleMeetingContent() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || checkingFriendship) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!usersAreFriends && targetUser) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-16 w-16 text-red-500 mx-auto mb-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <h2 className="text-2xl font-bold mb-4">Connection Required</h2>
+          <p className="text-gray-600 mb-6">
+            You need to be connected with{" "}
+            {targetUser?.name || targetUser?.display_name} before you can
+            schedule a meeting.
+          </p>
+          <div className="flex justify-center">
+            <button
+              onClick={() => router.push("/")}
+              className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition-colors duration-200"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
