@@ -31,7 +31,7 @@ export const addToSkillsArray = (
         learnSkillsArray.push(embeddingArray);
       }
     } catch (err) {
-      alert(err);
+      console.error("Error processing learn skill embedding:", err);
     }
   } else if (skill.type === "teach" && skill.embedding) {
     try {
@@ -50,7 +50,7 @@ export const addToSkillsArray = (
         teachSkillsArray.push(embeddingArray);
       }
     } catch (error) {
-      alert(error);
+      console.error("Error processing teach skill embedding:", error);
     }
   }
 };
@@ -65,7 +65,7 @@ export const checkFriendshipStatus = async (
     const user = await getAuthUser();
 
     if (!user) {
-      alert("No authenticated user found");
+      alert("No user found");
       return;
     }
 
@@ -380,7 +380,7 @@ export const calculateUserSimilarityScores = async (
             }));
         }
       } catch (error) {
-        alert("error making optimal slots");
+        console.error("Error making optimal slots:", error);
       }
     }
 
