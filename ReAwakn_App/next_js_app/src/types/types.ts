@@ -118,13 +118,18 @@ export interface SkillLevel {
   level: number;
 }
 
+export interface ProfileSkill {
+  skill: string;
+  level: number;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
   displayName: string;
   profilePicture?: string;
-  teachingSkills: string[];
-  learningSkills: string[];
+  teachingSkills: ProfileSkill[];
+  learningSkills: ProfileSkill[];
 }
 export interface CalendarUser {
   id: string;
@@ -151,6 +156,7 @@ export interface UserSkill {
   type: string;
   embedding: string | Record<string, number> | number[];
   skill: string;
+  teaching_time?: number;
 }
 
 export interface Meeting {

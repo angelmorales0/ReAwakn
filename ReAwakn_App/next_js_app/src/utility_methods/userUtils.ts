@@ -65,16 +65,25 @@ export const addUserSkill = async (
   userId: string,
   skill: string,
   type: "teach" | "learn",
-  embedding: number[]
+  embedding: number[],
+  teaching_time?: number,
+  level: number = 1
 ) => {
-  const { data, error } = await supabase.from("user_skills").insert([
-    {
-      user_id: userId,
-      skill: skill,
-      type: type,
-      embedding: embedding,
-    },
-  ]);
+  const skillData: any = {
+    user_id: userId,
+    skill: skill,
+    type: type,
+    embedding: embedding,
+    level: level,
+  };
+
+  if (type === "teach" && teaching_time) {
+    skillData.teaching_time = teaching_time;
+  }
+
+  const { data, error } = await supabase
+    .from("user_skills")
+    .insert([skillData]);
 
   if (error) {
     toast.error("Error adding user skill", {
