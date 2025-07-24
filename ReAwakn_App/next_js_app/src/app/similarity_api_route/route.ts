@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { spawn } from "child_process";
-import path from "path";
+import { similarity_service } from "../user_similarity_algorithm/similarity_service";
 
 interface SimilarityRequest {
   loggedInUserId?: string;
@@ -13,95 +12,20 @@ interface SimilarityResponse {
   error?: string;
 }
 
-function runPythonScript(scriptPath: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const env = {
-      ...process.env,
-      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    };
-
-    const python = spawn("/usr/local/bin/python3", [scriptPath, ...args], {
-      cwd: process.cwd(),
-      env: env,
-    });
-
-    let output = "";
-    let errorOutput = "";
-
-    python.stdout?.on("data", (data: Buffer) => {
-      const dataStr = data.toString();
-      output += dataStr;
-    });
-
-    python.stderr.on("data", (data) => {
-      const dataStr = data.toString();
-      errorOutput += dataStr;
-    });
-
-    python.on("close", (code) => {
-      if (code === 0) {
-        resolve(output);
-      } else {
-        reject(
-          new Error(`Python script failed with code ${code}: ${errorOutput}`)
-        );
-      }
-    });
-
-    python.on("error", (error) => {
-      reject(error);
-    });
-  });
-}
-
-function getPythonScriptPath(): string {
-  return path.join(
-    process.cwd(),
-    "src",
-    "app",
-    "user_similarity_algorithm",
-    "similarity_api.py"
-  );
-}
-
 async function calculateSimilarity(
   userId1: string,
-  userId2: string,
-  isGet: boolean = false
+  userId2: string
 ): Promise<{ similarity_score?: number; error?: string }> {
   try {
-    const output = await runPythonScript(getPythonScriptPath(), [
-      "similarity",
+    const similarity_score = similarity_service.get_similarity(
       userId1,
-      userId2,
-    ]);
+      userId2
+    );
 
-    const trimmedOutput = output.trim();
-    if (!trimmedOutput) {
+    if (similarity_score === undefined || similarity_score === null) {
       console.error("Empty response from similarity calculation");
       return { similarity_score: 0, error: "Empty response from calculation" };
     }
-
-    const resultMatch = trimmedOutput.match(
-      /RESULT_START\s*([\d.]+)\s*RESULT_END/
-    );
-
-    if (resultMatch && resultMatch[1]) {
-      const similarity_score = parseFloat(resultMatch[1]);
-      console.log(
-        `Extracted similarity score from markers: ${similarity_score}`
-      );
-
-      if (!isNaN(similarity_score)) {
-        return { similarity_score };
-      }
-    }
-
-    const lines = trimmedOutput.split("\n");
-    const lastLine = lines[lines.length - 1].trim();
-
-    const similarity_score = parseFloat(lastLine);
 
     if (isNaN(similarity_score)) {
       throw new Error("Invalid similarity score: not a number");
@@ -113,10 +37,9 @@ async function calculateSimilarity(
       );
     }
 
-    return { similarity_score: similarity_score };
+    return { similarity_score };
   } catch (error) {
-    const prefix = isGet ? "GET " : "";
-    alert(error);
+    console.error("Error calculating similarity:", error);
     return {
       error: `Failed to calculate similarity: ${
         (error as Error).message || "Unknown error"
@@ -132,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "refresh") {
       try {
-        await runPythonScript(getPythonScriptPath(), ["refresh"]);
+        await similarity_service.refresh_data();
         return NextResponse.json({
           success: true,
           message: "Similarity data refreshed successfully",

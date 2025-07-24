@@ -31,7 +31,7 @@ export default function MemberCard({
                 member.similarityScore
               )} text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg`}
             >
-              {Math.round(member.similarityScore * 100)}%
+              {(member.similarityScore * 100).toFixed(1)}%
             </div>
           </div>
         )}
