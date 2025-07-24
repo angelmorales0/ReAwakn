@@ -23,7 +23,7 @@ async function calculateSimilarity(
     );
 
     if (similarity_score === undefined || similarity_score === null) {
-      console.error("Empty response from similarity calculation");
+      alert("Empty response from calculation");
       return { similarity_score: 0, error: "Empty response from calculation" };
     }
 
@@ -39,7 +39,7 @@ async function calculateSimilarity(
 
     return { similarity_score };
   } catch (error) {
-    console.error("Error calculating similarity:", error);
+    alert(`Failed to calculate similarity: ${(error as Error).message}`);
     return {
       error: `Failed to calculate similarity: ${
         (error as Error).message || "Unknown error"

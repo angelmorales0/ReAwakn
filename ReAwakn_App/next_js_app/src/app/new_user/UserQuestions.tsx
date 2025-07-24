@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 export interface SkillLevel {
   skill: string;
   level: number;
+  teaching_time?: number;
 }
 
 export interface QuestionnaireData {
@@ -67,7 +68,10 @@ export default function UserQuestions({
               ) {
                 setFormData((prev) => ({
                   ...prev,
-                  skillsToTeach: [...prev.skillsToTeach, { skill, level: 1 }],
+                  skillsToTeach: [
+                    ...prev.skillsToTeach,
+                    { skill, level: 1, teaching_time: 10 },
+                  ],
                 }));
                 setNewTeachSkill("");
               }
@@ -99,34 +103,79 @@ export default function UserQuestions({
                 Remove
               </Button>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">Your teaching level:</p>
-              {[1, 2, 3].map((lvl) => (
-                <label
-                  key={lvl}
-                  className="flex items-center space-x-2 cursor-pointer"
-                >
-                  <input
-                    type="radio"
-                    name={`teach-${i}`}
-                    checked={s.level === lvl}
-                    onChange={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        skillsToTeach: prev.skillsToTeach.map((sk, idx) =>
-                          idx === i ? { ...sk, level: lvl } : sk
-                        ),
-                      }))
-                    }
-                    className="w-3 h-3"
-                  />
-                  <span className="text-sm">
-                    {lvl === 1 && "Beginner"}
-                    {lvl === 2 && "Know the basics"}
-                    {lvl === 3 && "Intermediate"}
-                  </span>
-                </label>
-              ))}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">Your teaching level:</p>
+                {[1, 2, 3].map((lvl) => (
+                  <label
+                    key={lvl}
+                    className="flex items-center space-x-2 cursor-pointer"
+                  >
+                    <input
+                      type="radio"
+                      name={`teach-${i}`}
+                      checked={s.level === lvl}
+                      onChange={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          skillsToTeach: prev.skillsToTeach.map((sk, idx) =>
+                            idx === i ? { ...sk, level: lvl } : sk
+                          ),
+                        }))
+                      }
+                      className="w-3 h-3"
+                    />
+                    <span className="text-sm">
+                      {lvl === 1 && "Beginner"}
+                      {lvl === 2 && "Know the basics"}
+                      {lvl === 3 && "Intermediate"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  How long will it take you to teach this skill?
+                </p>
+                <div className="flex gap-2">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`teach-time-${i}`}
+                      checked={s.teaching_time === 5}
+                      onChange={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          skillsToTeach: prev.skillsToTeach.map((sk, idx) =>
+                            idx === i ? { ...sk, teaching_time: 5 } : sk
+                          ),
+                        }))
+                      }
+                      className="w-3 h-3"
+                    />
+                    <span className="text-sm">5 hours</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 cursor-pointer ml-4">
+                    <input
+                      type="radio"
+                      name={`teach-time-${i}`}
+                      checked={s.teaching_time === 10}
+                      onChange={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          skillsToTeach: prev.skillsToTeach.map((sk, idx) =>
+                            idx === i ? { ...sk, teaching_time: 10 } : sk
+                          ),
+                        }))
+                      }
+                      className="w-3 h-3"
+                    />
+                    <span className="text-sm">10 hours</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -315,31 +364,6 @@ export default function UserQuestions({
             </option>
           ))}
         </select>
-      </div>
-      <div className="space-y-4">
-        <Label className="text-lg font-semibold">
-          7. How long would it take you to improve at these skills? *
-        </Label>
-        <div className="grid grid-cols-1 gap-3">
-          <select
-            value={formData.improvementTime}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                improvementTime: e.target.value,
-              }))
-            }
-            className="w-full p-3 border rounded-md"
-          >
-            <option value="">Select hours needed</option>
-            <option value="5">5 hours</option>
-            <option value="6">6 hours</option>
-            <option value="7">7 hours</option>
-            <option value="8">8 hours</option>
-            <option value="9">9 hours</option>
-            <option value="10">10 hours</option>
-          </select>
-        </div>
       </div>
     </div>
   );

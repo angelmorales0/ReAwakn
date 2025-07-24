@@ -92,21 +92,21 @@ function cosineSimilarity(vector1, vector2) {
   if (!vector1 || !vector2 || vector1.length !== vector2.length) return 0;
 
   let dotProduct = 0;
-  let noramlized_v1 = 0;
+  let normalized_v1 = 0;
   let normalized_v2 = 0;
 
   for (let i = 0; i < vector1.length; i++) {
     dotProduct += vector1[i] * vector2[i];
-    noramlized_v1 += vector1[i] * vector1[i];
+    normalized_v1 += vector1[i] * vector1[i];
     normalized_v2 += vector2[i] * vector2[i];
   }
 
-  noramlized_v1 = Math.sqrt(noramlized_v1);
+  normalized_v1 = Math.sqrt(normalized_v1);
   normalized_v2 = Math.sqrt(normalized_v2);
 
-  if (noramlized_v1 === 0 || normalized_v2 === 0) return 0;
+  if (normalized_v1 === 0 || normalized_v2 === 0) return 0;
 
-  const similarity = dotProduct / (noramlized_v1 * normalized_v2);
+  const similarity = dotProduct / (normalized_v1 * normalized_v2);
   return similarity;
 }
 

@@ -106,6 +106,7 @@ export default function NewUserQuestionnaire() {
             level: skill.level,
             type: "teach",
             embedding: embedding,
+            teaching_time: skill.teaching_time,
           };
         })
       );

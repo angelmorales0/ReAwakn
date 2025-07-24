@@ -1,5 +1,6 @@
 interface SkillBadgeProps {
   skill: string;
+  level?: number;
 }
 
 export default function SkillBadge({ skill }: SkillBadgeProps) {

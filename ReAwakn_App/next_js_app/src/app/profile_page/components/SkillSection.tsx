@@ -3,9 +3,11 @@ import SkillBadge from "./SkillBadge";
 import { addUserSkill, removeUserSkill } from "@/utility_methods/userUtils";
 import { toast } from "sonner";
 import { getEmbeddingFromAPI } from "@/utility_methods/embeddingUtils";
+import { ProfileSkill } from "@/types/types";
+
 interface SkillSectionProps {
   title: string;
-  skills: string[];
+  skills: ProfileSkill[];
   icon: "teaching" | "learning";
   emptyMessage: string;
   isOwnProfile?: boolean;
@@ -24,7 +26,8 @@ export default function SkillSection({
 }: SkillSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newSkill, setNewSkill] = useState("");
-  const [localSkills, setLocalSkills] = useState<string[]>(skills);
+  const [teachingTime, setTeachingTime] = useState<number>(10);
+  const [localSkills, setLocalSkills] = useState<ProfileSkill[]>(skills);
   const iconColors = {
     teaching:
       "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400",
@@ -49,6 +52,8 @@ export default function SkillSection({
     />
   );
 
+  const [skillLevel, setSkillLevel] = useState<number>(1);
+
   const handleAddSkill = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -57,7 +62,7 @@ export default function SkillSection({
       return;
     }
 
-    if (localSkills.includes(newSkill.trim())) {
+    if (localSkills.some((s) => s.skill === newSkill.trim())) {
       toast.error("This skill already exists");
       return;
     }
@@ -73,11 +78,16 @@ export default function SkillSection({
         userId,
         newSkill.trim(),
         skillType,
-        embedding
+        embedding,
+        skillType === "teach" ? teachingTime : undefined,
+        skillLevel
       );
 
       if (result.success) {
-        setLocalSkills([...localSkills, newSkill.trim()]);
+        setLocalSkills([
+          ...localSkills,
+          { skill: newSkill.trim(), level: skillLevel },
+        ]);
         setNewSkill("");
         setIsAdding(false);
         toast.success("Skill added successfully");
@@ -94,7 +104,9 @@ export default function SkillSection({
       const result = await removeUserSkill(userId, skillToRemove, skillType);
 
       if (result.success) {
-        setLocalSkills(localSkills.filter((skill) => skill !== skillToRemove));
+        setLocalSkills(
+          localSkills.filter((skill) => skill.skill !== skillToRemove)
+        );
         toast.success("Skill removed successfully");
       } else {
         toast.error("Failed to remove skill");
@@ -137,50 +149,118 @@ export default function SkillSection({
 
       <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 min-h-[120px]">
         {isAdding && (
-          <form onSubmit={handleAddSkill} className="mb-4 flex">
-            <input
-              type="text"
-              value={newSkill}
-              onChange={(e) => setNewSkill(e.target.value)}
-              placeholder="Enter a skill..."
-              className="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              maxLength={50}
-            />
-            <button
-              type="submit"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md"
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsAdding(false);
-                setNewSkill("");
-              }}
-              className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md ml-2"
-            >
-              Cancel
-            </button>
+          <form onSubmit={handleAddSkill} className="mb-4 space-y-3">
+            <div className="flex">
+              <input
+                type="text"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                placeholder="Enter a skill..."
+                className="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                maxLength={50}
+              />
+              <button
+                type="submit"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md"
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAdding(false);
+                  setNewSkill("");
+                }}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md ml-2"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="mt-2">
+              <p className="text-sm text-gray-600 mb-1">Your skill level:</p>
+              <div className="flex gap-4">
+                {[1, 2, 3].map((level) => (
+                  <label
+                    key={level}
+                    className="flex items-center space-x-2 cursor-pointer"
+                  >
+                    <input
+                      type="radio"
+                      name="skill-level"
+                      checked={skillLevel === level}
+                      onChange={() => setSkillLevel(level)}
+                      className="w-3 h-3"
+                    />
+                    <span className="text-sm">
+                      {level === 1 &&
+                        (skillType === "learn"
+                          ? "Complete beginner"
+                          : "Beginner")}
+                      {level === 2 && "Know the basics"}
+                      {level === 3 && "Intermediate"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {skillType === "teach" && (
+              <div className="mt-2">
+                <p className="text-sm text-gray-600 mb-1">
+                  How long will it take you to teach this skill?
+                </p>
+                <div className="flex gap-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="teaching-time"
+                      checked={teachingTime === 5}
+                      onChange={() => setTeachingTime(5)}
+                      className="w-3 h-3"
+                    />
+                    <span className="text-sm">5 hours</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="teaching-time"
+                      checked={teachingTime === 10}
+                      onChange={() => setTeachingTime(10)}
+                      className="w-3 h-3"
+                    />
+                    <span className="text-sm">10 hours</span>
+                  </label>
+                </div>
+              </div>
+            )}
           </form>
         )}
 
         {localSkills.length > 0 ? (
           <div className="flex flex-wrap">
-            {localSkills.map((skill, index) => (
-              <div key={index} className="relative group">
-                <SkillBadge skill={skill} />
-                {isOwnProfile && (
-                  <button
-                    onClick={() => handleRemoveSkill(skill)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Remove skill"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            ))}
+            {localSkills.map((skillObj, index) => {
+              const skillName =
+                typeof skillObj === "string" ? skillObj : skillObj.skill;
+              const skillLevel =
+                typeof skillObj === "string" ? undefined : skillObj.level;
+
+              return (
+                <div key={index} className="relative group">
+                  <SkillBadge skill={skillName} />
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => handleRemoveSkill(skillName)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove skill"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-gray-500 dark:text-gray-400 italic">
