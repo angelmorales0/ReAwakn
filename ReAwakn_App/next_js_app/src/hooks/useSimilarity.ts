@@ -44,7 +44,7 @@ export function useSimilarity(): UseSimilarityReturn {
     setError(null);
 
     try {
-      const response = await fetch("W/similarity_api_route", {
+      await fetch("/similarity_api_route", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -53,13 +53,6 @@ export function useSimilarity(): UseSimilarityReturn {
           action: "refresh",
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to refresh similarity data");
-      }
-
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

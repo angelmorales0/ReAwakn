@@ -3,6 +3,7 @@ import os
 import pickle
 import sys
 from typing import Dict, List, Optional, Tuple
+import traceback
 
 import numpy as np
 import pandas as pd
@@ -36,12 +37,10 @@ def cosine_similarity(user_1_data, user_2_data):
 
 load_dotenv()
 
-
 def get_supabase_client() -> Client:
     url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
     key = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
     return create_client(url, key)
-
 
 def fetch_all_users():
     try:
@@ -70,9 +69,6 @@ def preprocess_availability_data(df):
 
 def create_encoders_and_hashmap():
     users_df = fetch_all_users()
-    if users_df.empty:
-        return None, None, None
-
     encoders = {}
     encoded_dfs = {}
 
@@ -81,7 +77,7 @@ def create_encoders_and_hashmap():
     for behavioral_attribute in simple_columns:
         if behavioral_attribute in users_df.columns:
             encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
-            col_data = users_df[behavioral_attribute].values.reshape(-1, 1)
+            col_data = users_df[behavioral_attribute].fillna('unknown').values.reshape(-1, 1)
             encoded_data = encoder.fit_transform(col_data)
             feature_names = [
                 f"{behavioral_attribute}_{category}"
@@ -94,17 +90,21 @@ def create_encoders_and_hashmap():
             encoders[behavioral_attribute] = encoder
             encoded_dfs[behavioral_attribute] = encoded_df
 
-    if "availability" in users_df.columns:
-        availability_lists = preprocess_availability_data(users_df)
-        mlb = MultiLabelBinarizer()
-        availability_encoded = mlb.fit_transform(availability_lists)
-        feature_names = [f"availability_{label}" for label in mlb.classes_]
-        availability_df = pd.DataFrame(
-            availability_encoded, columns=feature_names, index=users_df.index
-        )
 
-        encoders["availability"] = mlb
-        encoded_dfs["availability"] = availability_df
+        try:
+            availability_lists = preprocess_availability_data(users_df)
+
+            mlb = MultiLabelBinarizer()
+            availability_encoded = mlb.fit_transform(availability_lists)
+            feature_names = [f"availability_{label}" for label in mlb.classes_]
+            availability_df = pd.DataFrame(
+                availability_encoded, columns=feature_names, index=users_df.index
+            )
+            encoders["availability"] = mlb
+            encoded_dfs["availability"] = availability_df
+        except Exception as e:
+            traceback.print_exc()
+
 
     all_encoded_features = []
     feature_names = []
@@ -118,9 +118,6 @@ def create_encoders_and_hashmap():
         if user_trait in encoded_dfs and not encoded_dfs[user_trait].empty:
             all_encoded_features.append(encoded_dfs[user_trait])
             feature_names.extend(encoded_dfs[user_trait].columns.tolist())
-
-    if not all_encoded_features:
-        return encoders, {}, []
 
     combined_matrix = pd.concat(all_encoded_features, axis=1)
 
@@ -142,7 +139,6 @@ def calculate_user_similarity(
     user2_vector = user_encodings[user2_id].reshape(1, -1)
 
     return cosine_similarity(user1_vector, user2_vector)[0][0]
-
 
 def cache_data(
     encoders: Dict,
@@ -173,8 +169,7 @@ def load_encoders_and_data(
 
 class SimilarityService:
     def __init__(self):
-
-        self.cache_file = "user_similarity_data.pkl"
+        self.cache_file = os.path.join(os.getcwd(), "user_similarity_data.pkl")
         self.encoders = None
         self.user_encodings = None
         self.feature_names = None

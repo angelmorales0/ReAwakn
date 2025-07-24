@@ -3,6 +3,11 @@ import { cosineSimilarity } from "@/hooks/userEmbeddings";
 import { supabase } from "@/app/utils/supabase/client";
 import { getAuthUser } from "@/utility_methods/userUtils";
 import { toast } from "sonner";
+import {
+  findOverlappingTimeSlots,
+  convertToCalendarEvents,
+} from "@/utility_methods/schedulingUtils";
+import { rankSlots } from "@/app/lib/rankSlots";
 
 export const addToSkillsArray = (
   skill: UserSkill,
@@ -81,17 +86,15 @@ export const checkFriendshipStatus = async (
       .from("friends")
       .select("*")
       .eq("owner", memberId)
-      .eq("friend", user.id)
-      .single();
+      .eq("friend", user.id);
 
     const { data: iRequestedOtherUser } = await supabase
       .from("friends")
       .select("*")
       .eq("owner", user.id)
-      .eq("friend", memberId)
-      .single();
+      .eq("friend", memberId);
 
-    const iHavePendingRequest = otherUserRequestedMe && !iRequestedOtherUser;
+    const iHavePendingRequest = !!otherUserRequestedMe && !iRequestedOtherUser;
 
     setPendingRequest(iHavePendingRequest);
 
@@ -179,16 +182,34 @@ export const calculateUserSimilarityScores = async (
   try {
     const { data: loggedInUserSkills } = await supabase
       .from("user_skills")
-      .select("skill, type, embedding")
+      .select("skill, type, embedding, teaching_time")
       .eq("user_id", loggedInUserId);
 
     const { data: targetUserSkills } = await supabase
       .from("user_skills")
-      .select("skill, type, embedding")
+      .select("skill, type, embedding, teaching_time")
       .eq("user_id", targetUserId);
 
+    const { data: loggedInUserData } = await supabase
+      .from("users")
+      .select("time_zone, chronotype, availability")
+      .eq("id", loggedInUserId)
+      .single();
+
+    const { data: targetUserData } = await supabase
+      .from("users")
+      .select("time_zone, chronotype, availability")
+      .eq("id", targetUserId)
+      .single();
+
     if (!loggedInUserSkills || !targetUserSkills) {
-      return { max_learn_score: 0, max_teach_score: 0 };
+      return {
+        max_learn_score: 0,
+        max_teach_score: 0,
+        teaching_hours: 0,
+        matching_skill: "",
+        optimal_meeting_slots: [],
+      };
     }
 
     const loggedInUserLearnSkills: number[][] = [];
@@ -196,12 +217,21 @@ export const calculateUserSimilarityScores = async (
     const targetUserLearnSkills: number[][] = [];
     const targetUserTeachSkills: number[][] = [];
 
+    const targetTeachingSkillsMap = new Map();
+    const loggedInTeachingSkillsMap = new Map();
+
     loggedInUserSkills.forEach((skill) => {
       addToSkillsArray(skill, loggedInUserLearnSkills, loggedInUserTeachSkills);
+      if (skill.type === "teach" && skill.teaching_time) {
+        loggedInTeachingSkillsMap.set(skill.skill, skill.teaching_time);
+      }
     });
 
     targetUserSkills.forEach((skill) => {
       addToSkillsArray(skill, targetUserLearnSkills, targetUserTeachSkills);
+      if (skill.type === "teach" && skill.teaching_time) {
+        targetTeachingSkillsMap.set(skill.skill, skill.teaching_time);
+      }
     });
 
     const max_learn_score = findMaxLearnSimilarity(
@@ -214,7 +244,153 @@ export const calculateUserSimilarityScores = async (
       targetUserLearnSkills
     );
 
-    return { max_learn_score, max_teach_score };
+    let bestMatchingSkill = "";
+    let teaching_hours = 0;
+    let optimal_meeting_slots: any[] = [];
+
+    if (max_learn_score >= 0.8) {
+      const loggedInUserLearnSkillsData = loggedInUserSkills.filter(
+        (s) => s.type === "learn"
+      );
+      const targetUserTeachSkillsData = targetUserSkills.filter(
+        (s) => s.type === "teach"
+      );
+
+      let highestSimilarity = 0;
+
+      for (const learnSkill of loggedInUserLearnSkillsData) {
+        for (const teachSkill of targetUserTeachSkillsData) {
+          if (learnSkill.embedding && teachSkill.embedding) {
+            const learnEmbedding =
+              typeof learnSkill.embedding === "string"
+                ? JSON.parse(learnSkill.embedding)
+                : learnSkill.embedding;
+
+            const teachEmbedding =
+              typeof teachSkill.embedding === "string"
+                ? JSON.parse(teachSkill.embedding)
+                : teachSkill.embedding;
+
+            const similarity = cosineSimilarity(
+              Array.isArray(learnEmbedding)
+                ? learnEmbedding
+                : Object.values(learnEmbedding),
+              Array.isArray(teachEmbedding)
+                ? teachEmbedding
+                : Object.values(teachEmbedding)
+            );
+
+            if (similarity > highestSimilarity) {
+              highestSimilarity = similarity;
+              bestMatchingSkill = teachSkill.skill;
+              teaching_hours = teachSkill.teaching_time || 0;
+            }
+          }
+        }
+      }
+    } else if (max_teach_score >= 0.8) {
+      const loggedInUserTeachSkillsData = loggedInUserSkills.filter(
+        (hostTeachSkill) => hostTeachSkill.type === "teach"
+      );
+      const targetUserLearnSkillsData = targetUserSkills.filter(
+        (targetLearnSkill) => targetLearnSkill.type === "learn"
+      );
+
+      let highestSimilarity = 0;
+
+      for (const teachSkill of loggedInUserTeachSkillsData) {
+        for (const learnSkill of targetUserLearnSkillsData) {
+          if (teachSkill.embedding && learnSkill.embedding) {
+            const teachEmbedding =
+              typeof teachSkill.embedding === "string"
+                ? JSON.parse(teachSkill.embedding)
+                : teachSkill.embedding;
+
+            const learnEmbedding =
+              typeof learnSkill.embedding === "string"
+                ? JSON.parse(learnSkill.embedding)
+                : learnSkill.embedding;
+
+            const similarity = cosineSimilarity(
+              Array.isArray(teachEmbedding)
+                ? teachEmbedding
+                : Object.values(teachEmbedding),
+              Array.isArray(learnEmbedding)
+                ? learnEmbedding
+                : Object.values(learnEmbedding)
+            );
+
+            if (similarity > highestSimilarity) {
+              highestSimilarity = similarity;
+              bestMatchingSkill = teachSkill.skill;
+              teaching_hours = teachSkill.teaching_time;
+            }
+          }
+        }
+      }
+    }
+
+    if (
+      (max_learn_score >= 0.8 || max_teach_score >= 0.8) &&
+      teaching_hours > 0 &&
+      loggedInUserData &&
+      targetUserData
+    ) {
+      try {
+        const loggedInUserAvailability = loggedInUserData.availability || [];
+        const targetUserAvailability = targetUserData.availability || [];
+
+        const overlappingSlots = findOverlappingTimeSlots(
+          loggedInUserAvailability,
+          targetUserAvailability
+        );
+
+        if (overlappingSlots.length > 0) {
+          const loggedInUserTimeZone = loggedInUserData.time_zone;
+          const calendarEvents = convertToCalendarEvents(
+            overlappingSlots,
+            loggedInUserTimeZone
+          );
+
+          const user1 = {
+            user_id: loggedInUserId,
+            timezone: loggedInUserData.time_zone,
+            chronotype: loggedInUserData.chronotype,
+          };
+
+          const user2 = {
+            user_id: targetUserId,
+            timezone: targetUserData.time_zone,
+            chronotype: targetUserData.chronotype,
+          };
+
+          const slots = calendarEvents.map((event) => ({
+            startUTC: event.startUTC || "",
+            endUTC: event.endUTC || "",
+          }));
+
+          const rankedSlots = rankSlots(user1, user2, slots);
+
+          optimal_meeting_slots = rankedSlots
+            .slice(0, teaching_hours)
+            .map((slot) => ({
+              startUTC: slot.startUTC,
+              endUTC: slot.endUTC,
+              score: slot.score,
+            }));
+        }
+      } catch (error) {
+        alert("error making optimal slots");
+      }
+    }
+
+    return {
+      max_learn_score,
+      max_teach_score,
+      teaching_hours,
+      matching_skill: bestMatchingSkill,
+      optimal_meeting_slots,
+    };
   } catch (err) {
     toast.error("Error calculating scores");
     return { max_learn_score: 0, max_teach_score: 0 };

@@ -25,9 +25,11 @@ function runPythonScript(scriptPath: string, args: string[]): Promise<string> {
       cwd: process.cwd(),
       env: env,
     });
+
     let output = "";
     let errorOutput = "";
-    python.stdout.on("data", (data) => {
+
+    python.stdout?.on("data", (data: Buffer) => {
       const dataStr = data.toString();
       output += dataStr;
     });
@@ -77,10 +79,29 @@ async function calculateSimilarity(
 
     const trimmedOutput = output.trim();
     if (!trimmedOutput) {
-      throw new Error("Empty response from similarity calculation");
+      console.error("Empty response from similarity calculation");
+      return { similarity_score: 0, error: "Empty response from calculation" };
     }
 
-    const similarity_score = parseFloat(trimmedOutput);
+    const resultMatch = trimmedOutput.match(
+      /RESULT_START\s*([\d.]+)\s*RESULT_END/
+    );
+
+    if (resultMatch && resultMatch[1]) {
+      const similarity_score = parseFloat(resultMatch[1]);
+      console.log(
+        `Extracted similarity score from markers: ${similarity_score}`
+      );
+
+      if (!isNaN(similarity_score)) {
+        return { similarity_score };
+      }
+    }
+
+    const lines = trimmedOutput.split("\n");
+    const lastLine = lines[lines.length - 1].trim();
+
+    const similarity_score = parseFloat(lastLine);
 
     if (isNaN(similarity_score)) {
       throw new Error("Invalid similarity score: not a number");
@@ -161,11 +182,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const similarityResult = await calculateSimilarity(
-      userId,
-      targetUserId,
-      true
-    );
+    const similarityResult = await calculateSimilarity(userId, targetUserId);
 
     let result: SimilarityResponse = {};
     if (similarityResult.similarity_score !== undefined) {
@@ -177,7 +194,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        error: "Internal server error",
+        details: (error as Error).message,
+      },
       { status: 500 }
     );
   }
