@@ -15,9 +15,10 @@ import {
   filterAvailableEvents,
   prepareUserForRanking,
   prepareSlotsForRanking,
-  markBestMeetingSlot,
+  markTopMeetingSlots,
 } from "@/utility_methods/meetingUtils";
-import { CalendarUser, RankedCalendarEvent, RankedSlot } from "@/types/types";
+import { calculateUserSimilarityScores } from "@/utility_methods/memberCardUtils";
+import { CalendarUser, RankedCalendarEvent } from "@/types/types";
 
 import { getAuthUser } from "@/utility_methods/userUtils";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
@@ -38,6 +39,8 @@ function ScheduleMeetingContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [teachingHours, setTeachingHours] = useState<number>(0);
+  const [matchingSkill, setMatchingSkill] = useState<string>("");
 
   const userTimeZone = useUserTimezone(loggedInUser);
 
@@ -68,6 +71,28 @@ function ScheduleMeetingContent() {
           .single();
 
         setTargetUser(targetUserData);
+
+        if (loggedInUserData && targetUserData) {
+          try {
+            const result = await calculateUserSimilarityScores(
+              loggedInUserData.id,
+              targetUserData.id
+            );
+
+            const { teaching_hours, matching_skill } = result;
+
+            if (
+              teaching_hours !== undefined &&
+              teaching_hours > 0 &&
+              matching_skill
+            ) {
+              setTeachingHours(teaching_hours);
+              setMatchingSkill(matching_skill);
+            }
+          } catch (error) {
+            alert("Error getting teaching hours");
+          }
+        }
       }
 
       setIsLoading(false);
@@ -84,17 +109,19 @@ function ScheduleMeetingContent() {
 
       const slots = await findAvailableMeetingSlots(
         loggedInUser.id,
-        targetUser.id
+        targetUser.id,
+        teachingHours
       );
       setAvailableSlots(slots);
     };
 
     findAvailableSlots();
-  }, [loggedInUser, targetUser, userTimeZone]);
+  }, [loggedInUser, targetUser, userTimeZone, teachingHours]);
 
   const findAvailableMeetingSlots = async (
     hostId: string,
-    targetId: string
+    targetId: string,
+    hours: number = teachingHours
   ) => {
     const { data: hostData } = await supabase
       .from("users")
@@ -126,8 +153,8 @@ function ScheduleMeetingContent() {
         userTimeZone
       );
 
-      const startOfMonth = moment().startOf("month").toISOString();
-      const endOfMonth = moment().add(1, "month").endOf("month").toISOString();
+      const startDate = moment().startOf("day").toISOString();
+      const endDate = moment().add(2, "months").endOf("month").toISOString();
 
       const { data: existingMeetings, error: meetingsError } = await supabase
         .from("meetings")
@@ -135,8 +162,8 @@ function ScheduleMeetingContent() {
         .or(
           `host_id.eq.${hostId},guest_id.eq.${hostId},host_id.eq.${targetId},guest_id.eq.${targetId}`
         )
-        .gte("start_time", startOfMonth)
-        .lte("start_time", endOfMonth);
+        .gte("start_time", startDate)
+        .lte("start_time", endDate);
 
       if (meetingsError) {
         alert("Error fetching existing meetings");
@@ -176,19 +203,16 @@ function ScheduleMeetingContent() {
 
         const { top_slots } = await response.json();
 
-        let bestSlot: RankedSlot | null = null;
         if (top_slots && top_slots.length > 0) {
-          bestSlot = top_slots.reduce(
-            (best: RankedSlot, current: RankedSlot) =>
-              current.score > best.score ? current : best,
-            top_slots[0]
-          );
+          const numSlotsToShow = hours > 0 ? hours : 5;
+          return markTopMeetingSlots(
+            availableEvents,
+            top_slots,
+            numSlotsToShow
+          ) as RankedCalendarEvent[];
+        } else {
+          return availableEvents as RankedCalendarEvent[];
         }
-
-        return markBestMeetingSlot(
-          availableEvents,
-          bestSlot
-        ) as RankedCalendarEvent[];
       } catch (error) {
         return availableEvents;
       }
@@ -309,6 +333,38 @@ function ScheduleMeetingContent() {
         </div>
       </div>
 
+      {teachingHours > 0 && matchingSkill && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+          <div className="flex items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-green-500 mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <p className="text-sm text-green-700 font-medium">
+              Teaching Plan Information
+            </p>
+          </div>
+          <div className="mt-2 text-sm text-green-700">
+            <p>
+              <span className="font-medium">Matching Skill:</span>{" "}
+              {matchingSkill}
+            </p>
+            <p>
+              <span className="font-medium">Teaching Hours Required:</span>{" "}
+              {teachingHours} hours
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <p className="mb-4 calendar-page-text">
           Select an available time slot to schedule a 1-hour meeting. Available
@@ -348,53 +404,56 @@ function ScheduleMeetingContent() {
             id="calendar-container"
           >
             {availableSlots && availableSlots.length > 0 ? (
-              <Calendar
-                localizer={localizer}
-                events={availableSlots.map((slot) => ({
-                  ...slot,
-                  startUTC: slot.startUTC || "",
-                  endUTC: slot.endUTC || "",
-                }))}
-                startAccessor="start"
-                endAccessor="end"
-                onSelectEvent={selectEvent}
-                step={60}
-                timeslots={1}
-                defaultView="week"
-                views={["week"]}
-                date={currentDate}
-                onNavigate={(date) => setCurrentDate(date)}
-                min={new Date(0, 0, 0, 6, 0)}
-                max={new Date(0, 0, 0, 23, 0)}
-                className="rounded-md text-black calendar-black-text"
-                eventPropGetter={(event: any) => {
-                  if (event.resource?.isBestSlot) {
+              <>
+                <Calendar
+                  localizer={localizer}
+                  events={availableSlots.map((slot) => ({
+                    ...slot,
+                    startUTC: slot.startUTC || "",
+                    endUTC: slot.endUTC || "",
+                  }))}
+                  startAccessor="start"
+                  endAccessor="end"
+                  onSelectEvent={selectEvent}
+                  step={60}
+                  timeslots={1}
+                  defaultView="week"
+                  views={["week"]}
+                  date={currentDate}
+                  onNavigate={(date) => setCurrentDate(date)}
+                  min={new Date(0, 0, 0, 6, 0)}
+                  max={new Date(0, 0, 0, 23, 0)}
+                  className="rounded-md text-black calendar-black-text"
+                  eventPropGetter={(event: any) => {
+                    if (event.resource?.isBestSlot) {
+                      return {
+                        style: {
+                          backgroundColor: "#FF5722",
+                          cursor: "pointer",
+                          border: "2px solid #D84315",
+                          boxShadow: "0 0 5px rgba(255, 87, 34, 0.5)",
+                        },
+                      };
+                    }
+
                     return {
                       style: {
-                        backgroundColor: "#FF5722",
+                        backgroundColor: "#78909C",
                         cursor: "pointer",
-                        border: "2px solid #D84315",
-                        boxShadow: "0 0 5px rgba(255, 87, 34, 0.5)",
                       },
                     };
-                  }
-
-                  return {
-                    style: {
-                      backgroundColor: "#78909C",
-                      cursor: "pointer",
+                  }}
+                  formats={{
+                    timeGutterFormat: (date: Date) =>
+                      moment(date).format("h A"),
+                    eventTimeRangeFormat: (range) => {
+                      return `${moment(range.start).format(
+                        "h:mm A"
+                      )} - ${moment(range.end).format("h:mm A")}`;
                     },
-                  };
-                }}
-                formats={{
-                  timeGutterFormat: (date: Date) => moment(date).format("h A"),
-                  eventTimeRangeFormat: (range) => {
-                    return `${moment(range.start).format("h:mm A")} - ${moment(
-                      range.end
-                    ).format("h:mm A")}`;
-                  },
-                }}
-              />
+                  }}
+                />
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center h-full bg-gray-50 rounded-md p-8">
                 <svg
@@ -427,6 +486,8 @@ function ScheduleMeetingContent() {
           selectedSlot={selectedSlot}
           targetUser={targetUser}
           onConfirm={bookMeeting}
+          teachingHours={teachingHours}
+          matchingSkill={matchingSkill}
         />
       )}
     </div>

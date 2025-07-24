@@ -53,7 +53,10 @@ export default function TopMatchesSidebar() {
             const { max_learn_score, max_teach_score } =
               await calculateUserSimilarityScores(user.id, targetUser.id);
 
-            if (max_learn_score >= 0.5 || max_teach_score >= 0.5) {
+            if (
+              max_learn_score >= MATCH_THRESHOLD ||
+              max_teach_score >= MATCH_THRESHOLD
+            ) {
               usersWithScores.push({
                 id: targetUser.id,
                 name: targetUser.display_name,

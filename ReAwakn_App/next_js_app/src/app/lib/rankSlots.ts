@@ -83,13 +83,13 @@ function scoreDensity(slot: Slot, u1: User, u2: User): number {
   minBefore = Math.min(minBefore, 240);
   minAfter = Math.min(minAfter, 240);
 
-  const idealGap = 120;
+  const idealGap = 960;
 
   const calculateGapScore = (gap: number): number => {
     if (gap < idealGap) {
       return Math.pow(gap / idealGap, 2) * 0.8;
     } else {
-      return Math.max(0, 1 - (gap - idealGap) / 240);
+      return Math.max(0, 1 - (gap - idealGap) / 960);
     }
   };
 

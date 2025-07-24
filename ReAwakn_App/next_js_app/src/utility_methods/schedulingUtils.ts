@@ -77,7 +77,7 @@ export function convertToCalendarEvents(
   const startDate = new Date();
 
   const endDate = new Date();
-  endDate.setMonth(endDate.getMonth() + 1);
+  endDate.setMonth(endDate.getMonth() + 2);
 
   const timezone = getIANATimezone(userTimeZone);
 
@@ -86,7 +86,6 @@ export function convertToCalendarEvents(
     day <= endDate;
     day.setDate(day.getDate() + 1)
   ) {
-    if (day.getDay() === 0 || day.getDay() === 6) continue;
     for (const slot of timeSlots) {
       const [startTime, endTime] = slot.split(" - ");
       const [startHours, startMinutes] = startTime.split(":").map(Number);

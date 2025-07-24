@@ -8,6 +8,8 @@ export default function MeetingConfirmationModal({
   selectedSlot,
   targetUser,
   onConfirm: confrimMeeting,
+  teachingHours,
+  matchingSkill,
 }: MeetingConfirmationModalProps) {
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +60,25 @@ export default function MeetingConfirmationModal({
               <span className="font-medium">Time:</span>{" "}
               {formatTime(selectedSlot.start)} - {formatTime(selectedSlot.end)}
             </p>
+
+            {teachingHours !== undefined &&
+              teachingHours > 0 &&
+              matchingSkill && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-green-700 text-sm font-medium mb-1">
+                    Teaching Plan
+                  </p>
+                  <p className="text-green-700 text-sm">
+                    <span className="font-medium">Skill:</span> {matchingSkill}
+                  </p>
+                  <p className="text-green-700 text-sm">
+                    <span className="font-medium">
+                      Total Hours Recommended:
+                    </span>{" "}
+                    {teachingHours}
+                  </p>
+                </div>
+              )}
           </div>
 
           <form onSubmit={handleSubmit}>
