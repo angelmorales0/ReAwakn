@@ -1,5 +1,5 @@
 import moment from "moment-timezone";
-import { CalendarEvent } from "@/types/types";
+import { CalendarEvent, ScoredMeetingSlot, RankedSlot } from "@/types/types";
 
 export function hasConflict(
   event: { startUTC?: string; endUTC?: string },
@@ -58,7 +58,7 @@ export function prepareSlotsForRanking(
 
 export function markBestMeetingSlot(
   events: CalendarEvent[],
-  bestSlot: { startUTC: string; endUTC: string; score: number } | null
+  bestSlot: ScoredMeetingSlot | null
 ): CalendarEvent[] {
   if (!bestSlot) return events;
 
@@ -75,6 +75,109 @@ export function markBestMeetingSlot(
           available: true,
           isBestSlot: true,
           score: bestSlot.score,
+        },
+      };
+    }
+
+    return {
+      ...event,
+      resource: {
+        ...(event.resource || {}),
+        available: true,
+        isBestSlot: false,
+      },
+    };
+  });
+}
+
+export function markTopMeetingSlots(
+  events: CalendarEvent[],
+  topSlots: RankedSlot[] | ScoredMeetingSlot[],
+  numSlots: number = 5
+): CalendarEvent[] {
+  if (!topSlots || topSlots.length === 0) return events;
+
+  const moment = require("moment-timezone");
+
+  const idealGapMinutes = 16 * 60;
+  const gapTolerance = 2 * 60;
+
+  const optimalMeetings: ScoredMeetingSlot[] = [];
+
+  const firstBestSlot = [...topSlots].sort((a, b) => b.score - a.score)[0];
+  if (firstBestSlot) {
+    optimalMeetings.push(firstBestSlot);
+  }
+
+  const findNextOptimalSlot = (
+    lastSlot: ScoredMeetingSlot,
+    remainingSlots: ScoredMeetingSlot[]
+  ): ScoredMeetingSlot | null => {
+    const lastSlotEnd = moment.utc(lastSlot.endUTC);
+    const targetStartTime = lastSlotEnd.clone().add(idealGapMinutes, "minutes");
+
+    const scoredSlots = remainingSlots.map((slot) => {
+      const slotStart = moment.utc(slot.startUTC);
+      const gapDiff = Math.abs(slotStart.diff(targetStartTime, "minutes"));
+      const gapScore =
+        gapDiff <= gapTolerance
+          ? 1
+          : Math.max(0, 1 - (gapDiff - gapTolerance) / (24 * 60));
+
+      return {
+        slot,
+        gapScore,
+        combinedScore: 0.7 * gapScore + 0.3 * slot.score,
+      };
+    });
+
+    scoredSlots.sort((a, b) => b.combinedScore - a.combinedScore);
+
+    return scoredSlots.length > 0 ? scoredSlots[0].slot : null;
+  };
+
+  let remainingSlots = [
+    ...topSlots.filter(
+      (slot) =>
+        slot.startUTC !== firstBestSlot.startUTC ||
+        slot.endUTC !== firstBestSlot.endUTC
+    ),
+  ];
+
+  while (optimalMeetings.length < numSlots && remainingSlots.length > 0) {
+    const lastSelectedSlot = optimalMeetings[optimalMeetings.length - 1];
+    const nextSlot = findNextOptimalSlot(lastSelectedSlot, remainingSlots);
+
+    if (nextSlot) {
+      optimalMeetings.push(nextSlot);
+      remainingSlots = remainingSlots.filter(
+        (slot) =>
+          slot.startUTC !== nextSlot.startUTC || slot.endUTC !== nextSlot.endUTC
+      );
+    } else {
+      break;
+    }
+  }
+
+  return events.map((event) => {
+    const matchingSlotIndex = optimalMeetings.findIndex(
+      (slot) => event.startUTC === slot.startUTC && event.endUTC === slot.endUTC
+    );
+
+    if (matchingSlotIndex !== -1) {
+      const rank = matchingSlotIndex + 1;
+      const matchingSlot = optimalMeetings[matchingSlotIndex];
+
+      return {
+        ...event,
+        score: matchingSlot.score,
+        title: `#${rank}`,
+        resource: {
+          ...(event.resource || {}),
+          available: true,
+          isBestSlot: true,
+          score: matchingSlot.score,
+          rank: rank,
         },
       };
     }

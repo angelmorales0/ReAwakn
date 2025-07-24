@@ -22,6 +22,8 @@ export interface MeetingConfirmationModalProps {
     email?: string;
   };
   onConfirm: (meetingDetails: { title: string }) => void;
+  teachingHours?: number;
+  matchingSkill?: string;
 }
 
 export interface MatchUser {
@@ -253,4 +255,8 @@ export interface MeetingRankerRequestBody {
 export interface RankedCalendarEvent extends CalendarEvent {
   score?: number;
   title?: string;
+}
+
+export interface ScoredMeetingSlot extends MeetingSlot {
+  score: number;
 }
