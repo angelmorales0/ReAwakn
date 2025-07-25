@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { Calendar, momentLocalizer } from "react-big-calendar";
@@ -33,6 +33,20 @@ import {
 const localizer = momentLocalizer(moment);
 
 export default function MeetingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      }
+    >
+      <MeetingsPageContent />
+    </Suspense>
+  );
+}
+
+function MeetingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetUserId = searchParams.get("userId");
