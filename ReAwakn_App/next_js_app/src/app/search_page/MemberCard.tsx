@@ -36,6 +36,7 @@ export default function MemberCard({
           </div>
         )}
 
+
       {isPendingRequest && (
         <div className="absolute top-3 left-3 z-10">
           <div className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded-full shadow-lg">
