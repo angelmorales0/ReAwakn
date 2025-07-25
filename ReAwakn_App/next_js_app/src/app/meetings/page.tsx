@@ -182,7 +182,7 @@ function MeetingsPageContent() {
                   setMatchingSkill(matching_skill);
                 }
               } catch (error) {
-                console.error("Error getting teaching hours", error);
+                alert(error);
               }
             }
           }
@@ -274,7 +274,7 @@ function MeetingsPageContent() {
         .lte("start_time", endDate);
 
       if (meetingsError) {
-        console.error("Error fetching existing meetings", meetingsError);
+        alert("Error fetching existing meetings");
       }
 
       const availableEvents = filterAvailableEvents(
@@ -325,7 +325,7 @@ function MeetingsPageContent() {
         return availableEvents;
       }
     } catch (error) {
-      console.error("Error finding available meeting slots", error);
+      alert("Error finding available meeting slots");
       return [];
     }
   };

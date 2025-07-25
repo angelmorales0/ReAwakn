@@ -8,7 +8,6 @@ import createClient from "@/app/utils/supabase/server";
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
-
   const data = {
     email: formData.get("email") as string,
     password: formData.get("password") as string,
@@ -26,7 +25,6 @@ export async function login(formData: FormData) {
 
 export async function signup(formData: FormData) {
   const supabase = await createClient();
-
 
   const firstName = formData.get("first-name") as string;
   const lastName = formData.get("last-name") as string;
