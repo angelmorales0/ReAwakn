@@ -1,4 +1,4 @@
-import { MemberCardProps, MemberWithSimilarity } from "@/types/types";
+import { MemberCardProps } from "@/types/types";
 import {
   getSimilarityColor,
   getSimilarityLabel,

@@ -127,36 +127,16 @@ export function convertToCalendarEvents(
         const slotStartUTC = slotStart.clone().utc();
         const slotEndUTC = slotEnd.clone().utc();
 
-        const startHour = slotStart.hour();
-        const startMinute = slotStart.minute();
-        const endHour = slotEnd.hour();
-        const endMinute = slotEnd.minute();
-
-        const startDate = new Date(
-          slotStart.year(),
-          slotStart.month(),
-          slotStart.date(),
-          startHour,
-          startMinute,
-          0
-        );
-
-        const endDate = new Date(
-          slotEnd.year(),
-          slotEnd.month(),
-          slotEnd.date(),
-          endHour,
-          endMinute,
-          0
-        );
+        const startDate = slotStart.toDate();
+        const endDate = slotEnd.toDate();
 
         events.push({
           start: startDate,
           end: endDate,
           startUTC: slotStartUTC.format(),
           endUTC: slotEndUTC.format(),
-          displayStartHour: startHour,
-          displayEndHour: endHour,
+          displayStartHour: slotStart.hour(),
+          displayEndHour: slotEnd.hour(),
           displayTime: `${formattedStartTime} - ${formattedEndTime}`,
           resource: { available: true },
         });
