@@ -57,8 +57,7 @@ export default function NewUserQuestionnaire() {
       formData.chronotype !== "" &&
       formData.availability.length > 0 &&
       formData.communicationStyle !== "" &&
-      formData.timeZone !== "" &&
-      formData.improvementTime !== ""
+      formData.timeZone !== ""
     );
   };
 
@@ -120,6 +119,7 @@ export default function NewUserQuestionnaire() {
             level: skill.level,
             type: "learn",
             embedding: embedding,
+            teaching_time: 5,
           };
         })
       );
