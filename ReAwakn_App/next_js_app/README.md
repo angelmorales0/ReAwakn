@@ -104,20 +104,6 @@ Beyond skills, the system also considers:
 
 For highly compatible users (similarity score ≥ 0.8), the system:
 
-1. Identifies the best matching skill
-2. Determines required teaching hours
-3. Finds optimal meeting slots based on availability overlap
-4. Ranks these slots considering both users' preferences
-
-The final similarity score is displayed with a color-coded system:
-
-- ≥80%: Excellent Match (Green)
-- ≥60%: Great Match (Blue)
-- ≥40%: Good Match (Yellow)
-- ≥20%: Fair Match (Orange)
-- <20%: Low Match (Red)
-
-## Building for Production
 
 1. Build the application:
 
