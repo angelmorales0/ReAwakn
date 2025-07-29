@@ -104,7 +104,6 @@ Beyond skills, the system also considers:
 
 For highly compatible users (similarity score ≥ 0.8), the system:
 
-
 1. Build the application:
 
    ```bash

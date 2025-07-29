@@ -59,13 +59,15 @@ export const checkFriendshipStatus = async (
   memberId: string,
   setIsFriends: (value: boolean) => void,
   disableConnectionButton: (value: boolean) => void,
-  setPendingRequest: (value: boolean) => void = () => {}
+  setPendingRequest: (value: boolean) => void = () => {},
+  setRequestSent: (value: boolean) => void = () => {},
+  setRequestReceived: (value: boolean) => void = () => {}
 ) => {
   try {
     const user = await getAuthUser();
 
     if (!user) {
-      alert("No user found");
+      toast.error("No user found");
       return;
     }
 
@@ -94,17 +96,19 @@ export const checkFriendshipStatus = async (
       .eq("owner", user.id)
       .eq("friend", memberId);
 
-    const iHavePendingRequest = !!otherUserRequestedMe && !iRequestedOtherUser;
+    const receivedRequest =
+      otherUserRequestedMe && otherUserRequestedMe.length > 0;
+    const sentRequest = iRequestedOtherUser && iRequestedOtherUser.length > 0;
 
-    setPendingRequest(iHavePendingRequest);
+    setRequestReceived(!!receivedRequest);
+    setRequestSent(!!sentRequest);
 
-    setIsFriends(isMutualFriends);
+    const iHavePendingRequest = receivedRequest && !sentRequest;
+    setPendingRequest(!!iHavePendingRequest);
 
-    if (!iRequestedOtherUser || iRequestedOtherUser.length === 0) {
-      disableConnectionButton(false);
-    } else {
-      disableConnectionButton(true);
-    }
+    setIsFriends(!!isMutualFriends);
+
+    disableConnectionButton(!!sentRequest);
   } catch (error) {
     toast.error("Error checking friendship status");
   }

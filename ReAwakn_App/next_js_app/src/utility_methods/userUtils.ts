@@ -38,7 +38,9 @@ export const updateUserAvailability = async (
     .eq("id", userId);
 
   if (error) {
-    alert("Error updating user availability");
+    toast.error("Error updating user availability", {
+      description: error.message,
+    });
     return { success: false, error };
   }
 
@@ -108,7 +110,9 @@ export const removeUserSkill = async (
     .eq("type", type);
 
   if (error) {
-    alert("Error removing user skill");
+    toast.error("Error removing user skill", {
+      description: error.message,
+    });
     return { success: false, error };
   }
   return { success: true };
@@ -151,13 +155,17 @@ export const uploadProfilePicture = async (userId: string, file: File) => {
       .eq("id", userId);
 
     if (updateError) {
-      alert("Error updating user profile picture");
+      toast.error("Error updating user profile picture", {
+        description: updateError.message,
+      });
       return { success: false, error: updateError };
     }
 
     return { success: true, profilePicUrl: publicUrl };
   } catch (error) {
-    alert("Error uploading profile picture");
+    toast.error("Error uploading profile picture", {
+      description: error instanceof Error ? error.message : "Unknown error",
+    });
     return { success: false, error };
   }
 };

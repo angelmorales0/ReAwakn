@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login, signInWithGithub } from "@/supabase-actions/auth-actions";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import supabase from "@/app/utils/supabase/client";
+import { toast } from "sonner";
 
 export function LoginForm({
   className,
@@ -36,7 +37,9 @@ export function LoginForm({
     });
 
     if (error) {
-      alert(error.message);
+      toast.error("Login failed", {
+        description: error.message,
+      });
     } else if (await userHasCompletedOnboarding()) {
       router.push("/");
     } else {

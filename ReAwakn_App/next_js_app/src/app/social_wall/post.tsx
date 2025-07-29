@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/app/utils/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 type Post = {
   id: string;
@@ -36,13 +37,17 @@ export default function PostCard({ post, formatDate }: PostProps) {
       } = await supabase.auth.getUser();
 
       if (error) {
-        alert(error);
+        toast.error("Authentication error", {
+          description: error.message,
+        });
         return null;
       }
 
       return user;
     } catch (error) {
-      alert(error);
+      toast.error("Authentication error", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
       return null;
     }
   };
@@ -51,7 +56,9 @@ export default function PostCard({ post, formatDate }: PostProps) {
       const user = await getUser();
 
       if (!user) {
-        alert("You must be logged in to comment");
+        toast.error("Authentication required", {
+          description: "You must be logged in to comment",
+        });
         return;
       }
 
@@ -65,14 +72,18 @@ export default function PostCard({ post, formatDate }: PostProps) {
       ]);
 
       if (error) {
-        alert(error);
+        toast.error("Comment error", {
+          description: error.message,
+        });
         return;
       }
 
       setCommentText("");
       getComments();
     } catch (error) {
-      alert(error);
+      toast.error("Comment error", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   };
 
@@ -84,13 +95,17 @@ export default function PostCard({ post, formatDate }: PostProps) {
         .eq("post_id", post.id);
 
       if (error) {
-        alert(error);
+        toast.error("Error loading comments", {
+          description: error.message,
+        });
         return;
       }
 
       setCommentList(data);
     } catch (error) {
-      alert(error);
+      toast.error("Error loading comments", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   };
 
@@ -111,13 +126,17 @@ export default function PostCard({ post, formatDate }: PostProps) {
         .limit(1);
 
       if (error) {
-        alert(error);
+        toast.error("Error checking likes", {
+          description: error.message,
+        });
         return false;
       }
 
       return data && data.length > 0;
     } catch (error) {
-      alert(error);
+      toast.error("Error checking likes", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
       return false;
     }
   };
@@ -143,13 +162,17 @@ export default function PostCard({ post, formatDate }: PostProps) {
         .eq("post_id", post.id);
 
       if (error) {
-        alert(error);
+        toast.error("Error getting like count", {
+          description: error.message,
+        });
         return;
       }
 
       setLikeCount(count || 0);
     } catch (error) {
-      alert(error);
+      toast.error("Error getting like count", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   };
   const handleLike = async () => {
@@ -157,7 +180,9 @@ export default function PostCard({ post, formatDate }: PostProps) {
       const user = await getUser();
 
       if (!user) {
-        alert("You must be logged in to like posts");
+        toast.error("Authentication required", {
+          description: "You must be logged in to like posts",
+        });
         return;
       }
 
@@ -169,7 +194,9 @@ export default function PostCard({ post, formatDate }: PostProps) {
           .match({ user_id: user.id, post_id: post.id });
 
         if (error) {
-          alert(error);
+          toast.error("Error unliking post", {
+            description: error.message,
+          });
           setIsAlreadyLiked(true);
           return;
         }
@@ -179,7 +206,9 @@ export default function PostCard({ post, formatDate }: PostProps) {
           .insert([{ user_id: user.id, post_id: post.id }]);
 
         if (error) {
-          alert(error);
+          toast.error("Error liking post", {
+            description: error.message,
+          });
           return;
         }
 
@@ -188,7 +217,9 @@ export default function PostCard({ post, formatDate }: PostProps) {
 
       getLikeCount();
     } catch (error) {
-      alert(error);
+      toast.error("Error handling like", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   };
   return (

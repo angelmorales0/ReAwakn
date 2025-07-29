@@ -14,6 +14,8 @@ export default function MemberCard({
     isDisabled,
     isFriends,
     isPendingRequest,
+    requestSent,
+    requestReceived,
     sendConnectionRequest,
     viewProfile,
     enterDM,
@@ -94,12 +96,18 @@ export default function MemberCard({
               onClick={sendConnectionRequest}
               disabled={isDisabled}
               className={`w-full px-4 py-2 text-white text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                isDisabled
+                isDisabled || requestSent
                   ? "bg-gray-400 cursor-not-allowed"
+                  : requestReceived
+                  ? "bg-green-500 hover:bg-green-600 focus:ring-green-500"
                   : "bg-blue-500 hover:bg-blue-600 focus:ring-blue-500"
               }`}
             >
-              {isDisabled ? "Connection Pending" : "Connect"}
+              {requestSent
+                ? "Request Sent"
+                : requestReceived
+                ? "Accept Request"
+                : "Connect"}
             </button>
           )}
           <button

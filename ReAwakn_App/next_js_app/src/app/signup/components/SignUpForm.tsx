@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { signup } from "@/supabase-actions/auth-actions";
 import { useState } from "react";
 import supabase from "@/app/utils/supabase/client";
+import { toast } from "sonner";
 
 export function SignUpForm() {
   const [userData, setUserData] = useState({
@@ -40,7 +41,9 @@ export function SignUpForm() {
       });
 
     if (signUpError) {
-      alert(signUpError);
+      toast.error("Sign up failed", {
+        description: signUpError.message,
+      });
     } else {
       setShowVerificationMessage(true);
     }

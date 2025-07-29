@@ -31,17 +31,36 @@ export default function ProfilePage() {
 
       const { data: skillsData, error: skillsError } = await supabase
         .from("user_skills")
-        .select("skill, type")
+        .select("skill, type, level")
         .eq("user_id", targetUserId);
 
       if (skillsData && !skillsError) {
+        const teachingSkillsSet = new Set();
+        const learningSkillsSet = new Set();
+
         const teachingSkills = skillsData
-          .filter((skill) => skill.type === "teach")
-          .map((skill) => skill.skill);
+          .filter(
+            (skill) =>
+              skill.type === "teach" &&
+              !teachingSkillsSet.has(skill.skill) &&
+              teachingSkillsSet.add(skill.skill)
+          )
+          .map((skill) => ({
+            skill: skill.skill,
+            level: skill.level || 1,
+          }));
 
         const learningSkills = skillsData
-          .filter((skill) => skill.type === "learn")
-          .map((skill) => skill.skill);
+          .filter(
+            (skill) =>
+              skill.type === "learn" &&
+              !learningSkillsSet.has(skill.skill) &&
+              learningSkillsSet.add(skill.skill)
+          )
+          .map((skill) => ({
+            skill: skill.skill,
+            level: skill.level || 1,
+          }));
 
         const { data: targetUserData, error } = await supabase
           .from("users")
