@@ -73,96 +73,105 @@ export default function SearchPage() {
     setCalculatingScores(true);
     const newScores = new Map(similarityScores);
 
-    const { data: loggedInUserData } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", loggedInUser.id)
-      .single();
+    try {
+      const { data: loggedInUserData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", loggedInUser.id)
+        .single();
 
-    for (const member of membersToCalculate) {
-      try {
-        const { data: memberData, error: memberError } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", member.id)
-          .single();
-
-        if (memberError) {
-          alert(`Error fetching member data: ${memberError.message}`);
-          continue;
-        }
-
-        if (loggedInUserData && memberData) {
-          const max_learn_score = findMaxLearnSimilarity(
-            loggedInUserData,
-            memberData
-          );
-          const max_teach_score = findMaxTeachSimilarity(
-            loggedInUserData,
-            memberData
-          );
-
-          const memberIndex = members.findIndex((m) => m.id === member.id);
-          if (memberIndex !== -1) {
-            setMembers((prevMembers) => {
-              const updatedMembers = [...prevMembers];
-              updatedMembers[memberIndex] = {
-                ...updatedMembers[memberIndex],
-                maxLearnScore: max_learn_score,
-                maxTeachScore: max_teach_score,
-              };
-              return updatedMembers;
-            });
-          }
-        }
-
-        try {
-          const response = await fetch("/similarity_api_route", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              loggedInUserId: loggedInUser.id,
-              targetUserId: member.id,
-              action: "similarity",
-            }),
-          });
-          const data = await response.json();
-
-          if (data.similarity !== undefined) {
-            newScores.set(member.id, data.similarity);
-          }
-        } catch (fetchError) {
-          alert(`Error calculating similarity: ${fetchError}`);
-          newScores.set(member.id, 0);
-        }
-      } catch (error) {
-        alert(`Error processing member: ${error}`);
-        newScores.set(member.id, 0);
+      if (!loggedInUserData) {
+        alert("Could not fetch logged in user data");
+        return;
       }
-    }
 
-    setSimilarityScores(newScores);
-    setCalculatingScores(false);
+      const validMembers = membersToCalculate.filter((m) => m?.id);
+
+      await Promise.all(
+        validMembers.map(async (member) => {
+          try {
+            const { data: memberData } = await supabase
+              .from("users")
+              .select("*")
+              .eq("id", member.id)
+              .single();
+
+            if (!memberData) return;
+
+            const max_learn_score = findMaxLearnSimilarity(
+              loggedInUserData,
+              memberData
+            );
+            const max_teach_score = findMaxTeachSimilarity(
+              loggedInUserData,
+              memberData
+            );
+
+            setMembers((prevMembers) =>
+              prevMembers.map((member) =>
+                member.id === member.id
+                  ? {
+                      ...member,
+                      maxLearnScore: max_learn_score,
+                      maxTeachScore: max_teach_score,
+                    }
+                  : member
+              )
+            );
+
+            const response = await fetch("/similarity_api_route", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                loggedInUserId: loggedInUser.id,
+                targetUserId: member.id,
+                action: "similarity",
+              }),
+            }).catch((e) => {
+              alert(`Fetch error: ${e}`);
+              return null;
+            });
+
+            if (response) {
+              const data = await response.json();
+              if (data.similarity !== undefined) {
+                newScores.set(member.id, data.similarity);
+              }
+            } else {
+              newScores.set(member.id, 0);
+            }
+          } catch (error) {
+            alert(`Error processing member ${member.id}: ${error}`);
+          }
+        })
+      );
+    } catch (error) {
+      alert(`Error in similarity calculation: ${error}`);
+    } finally {
+      setSimilarityScores(newScores);
+      setCalculatingScores(false);
+    }
   };
 
   const handleSearchChange = (term: string) => {
     setSearchTerm(term);
   };
 
-  const membersWithScores = members.map((member) => ({
-    ...member,
-    similarityScore: similarityScores.get(member.id) || 0,
-    similarityLoading: calculatingScores && !similarityScores.has(member.id),
-  }));
-
-  const sortedMembers = membersWithScores.sort((a, b) => {
-    if (a.similarityScore !== undefined && b.similarityScore !== undefined) {
-      return b.similarityScore - a.similarityScore;
-    }
-    return 0;
-  });
+  const sortedMembers = [
+    ...new Map(
+      members
+        .filter((member) => member?.id)
+        .map((member) => [
+          member.id,
+          {
+            ...member,
+            similarityScore: similarityScores.get(member.id) || 0,
+            similarityLoading:
+              calculatingScores && !similarityScores.has(member.id),
+          },
+        ])
+    ).values(),
+  ].sort((a, b) => (b.similarityScore || 0) - (a.similarityScore || 0));
 
   return (
     <div className="max-w-6xl mx-auto md:py-10 h-screen relative">

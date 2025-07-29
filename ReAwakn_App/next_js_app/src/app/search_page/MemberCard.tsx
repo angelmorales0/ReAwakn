@@ -68,13 +68,9 @@ export default function MemberCard({
           </div>
         )}
 
-        <h3 className="font-semibold text-gray-900 text-lg mb-1">
+        <h3 className="font-semibold text-gray-900 text-lg mb-2">
           {member.name}
         </h3>
-
-        {member.email && (
-          <p className="text-sm text-gray-600 mb-2">{member.email}</p>
-        )}
 
         {showSimilarityScore &&
           member.similarityScore !== undefined &&
