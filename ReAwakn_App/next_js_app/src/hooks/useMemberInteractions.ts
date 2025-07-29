@@ -8,6 +8,8 @@ export function useMemberInteractions(memberId: string) {
   const [isDisabled, setIsDisabled] = useState(false);
   const [isFriends, setIsFriends] = useState(false);
   const [isPendingRequest, setIsPendingRequest] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [requestReceived, setRequestReceived] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -15,7 +17,9 @@ export function useMemberInteractions(memberId: string) {
       memberId,
       setIsFriends,
       setIsDisabled,
-      setIsPendingRequest
+      setIsPendingRequest,
+      setRequestSent,
+      setRequestReceived
     );
   }, [memberId]);
 
@@ -30,7 +34,9 @@ export function useMemberInteractions(memberId: string) {
         memberId,
         setIsFriends,
         setIsDisabled,
-        setIsPendingRequest
+        setIsPendingRequest,
+        setRequestSent,
+        setRequestReceived
       );
     } catch (error) {
       alert(error);
@@ -85,6 +91,8 @@ export function useMemberInteractions(memberId: string) {
     isDisabled,
     isFriends,
     isPendingRequest,
+    requestSent,
+    requestReceived,
     sendConnectionRequest,
     viewProfile,
     enterDM,

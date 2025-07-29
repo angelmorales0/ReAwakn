@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/app/utils/supabase/client";
 import PostCard from "./post";
+import { toast } from "sonner";
 
 type Post = {
   id: string;
@@ -26,7 +27,9 @@ export default function SocialWall() {
         .order("created_at", { ascending: false });
 
       if (postsError) {
-        alert("Error loading posts: " + postsError.message);
+        toast.error("Error loading posts", {
+          description: postsError.message,
+        });
         setLoading(false);
         return;
       }
@@ -44,7 +47,9 @@ export default function SocialWall() {
         .in("id", authorIds);
 
       if (usersError) {
-        alert("Error loading users: " + usersError.message);
+        toast.error("Error loading users", {
+          description: usersError.message,
+        });
       }
 
       const profilePicMap = new Map();
@@ -63,7 +68,9 @@ export default function SocialWall() {
 
       setPosts(postsWithProfilePics);
     } catch (error) {
-      alert("An error occurred while loading posts");
+      toast.error("An error occurred while loading posts", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     } finally {
       setLoading(false);
     }
@@ -100,7 +107,6 @@ export default function SocialWall() {
         <div className="flex flex-col space-y-8 max-w-2xl mx-auto">
           {posts.map((post, index) => (
             <PostCard key={index} post={post} formatDate={formatDate} />
-            //NEEED TO FIX POST CARD INPUT
           ))}
         </div>
       )}

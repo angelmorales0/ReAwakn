@@ -1,124 +1,103 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import supabase from "@/app/utils/supabase/client";
-import { MatchUser } from "@/types/types";
+import { supabase } from "@/app/utils/supabase/client";
+import { MemberWithSimilarity } from "@/types/types";
 import { calculateUserSimilarityScores } from "@/utility_methods/memberCardUtils";
 import { getAuthUser } from "@/utility_methods/userUtils";
+import { toast } from "sonner";
 
-const MATCH_THRESHOLD = 0.8;
+const LEARN_THRESHOLD = 0.8;
+const TEACH_THRESHOLD = 0.8;
 
 export default function TopMatchesSidebar() {
-  const [topMatches, setTopMatches] = useState<MatchUser[]>([]);
+  const [matches, setMatches] = useState<MemberWithSimilarity[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const fetchTopMatches = async () => {
+    const fetchMatches = async () => {
       try {
+        setLoading(true);
         const user = await getAuthUser();
-
         if (!user) {
           setLoading(false);
           return;
         }
 
-        const { data: userData } = await supabase()
-          .from("users")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        if (!userData) {
-          setLoading(false);
-          return;
-        }
-
-        const { data: allUsers } = await supabase()
+        const { data: users } = await supabase
           .from("users")
           .select("id, display_name, email, profile_pic_url")
           .eq("completed_onboarding", true)
           .neq("id", user.id)
-          .limit(5);
+          .limit(15);
 
-        if (!allUsers || allUsers.length === 0) {
+        if (!users?.length) {
           setLoading(false);
+          setMatches([]);
           return;
         }
 
-        const usersWithScores: MatchUser[] = [];
+        const usersWithScores = await Promise.all(
+          users.map(async (targetUser) => {
+            try {
+              const { max_learn_score, max_teach_score } =
+                await calculateUserSimilarityScores(user.id, targetUser.id);
 
-        for (const targetUser of allUsers) {
-          try {
-            const { max_learn_score, max_teach_score } =
-              await calculateUserSimilarityScores(user.id, targetUser.id);
-
-            if (
-              max_learn_score >= MATCH_THRESHOLD ||
-              max_teach_score >= MATCH_THRESHOLD
-            ) {
-              usersWithScores.push({
+              return {
                 id: targetUser.id,
                 name: targetUser.display_name,
                 email: targetUser.email,
                 profilePicUrl: targetUser.profile_pic_url,
                 maxLearnScore: max_learn_score,
                 maxTeachScore: max_teach_score,
-              });
+              };
+            } catch (error) {
+              toast.error(`Error calculating similarity: ${error}`);
+              return null;
             }
-          } catch (error) {
-            alert(error);
-          }
-        }
-
-        const sortedMatches = usersWithScores
-          .sort((a, b) => {
-            const maxScoreA = Math.max(
-              a.maxLearnScore || 0,
-              a.maxTeachScore || 0
-            );
-            const maxScoreB = Math.max(
-              b.maxLearnScore || 0,
-              b.maxTeachScore || 0
-            );
-            return maxScoreB - maxScoreA;
           })
-          .slice(0, 5);
+        );
 
-        setTopMatches(sortedMatches);
+        const goodMatches = usersWithScores
+          .filter(
+            (user) =>
+              user &&
+              ((user.maxLearnScore !== undefined &&
+                user.maxLearnScore >= LEARN_THRESHOLD) ||
+                (user.maxTeachScore !== undefined &&
+                  user.maxTeachScore >= TEACH_THRESHOLD))
+          )
+          .sort(
+            (a, b) =>
+              Math.max(b?.maxLearnScore || 0, b?.maxTeachScore || 0) -
+              Math.max(a?.maxLearnScore || 0, a?.maxTeachScore || 0)
+          );
+
+        setMatches((goodMatches as MemberWithSimilarity[]).slice(0, 10));
       } catch (error) {
-        alert(error);
+        toast.error("Error fetching matches");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTopMatches();
+    fetchMatches();
   }, []);
-
-  const viewProfile = (userId: string) => {
-    try {
-      router.push(`/profile_page?id=${userId}`);
-    } catch (error) {
-      alert(error);
-    }
-  };
 
   if (loading) {
     return (
       <div className="w-80 bg-black border-l border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Top Matches
-        </h2>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-white">Learning Matches</h2>
+        </div>
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                </div>
+            <div key={i} className="animate-pulse flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+              <div className="flex-1">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
               </div>
             </div>
           ))}
@@ -127,18 +106,16 @@ export default function TopMatchesSidebar() {
     );
   }
 
-  if (topMatches.length === 0) {
+  if (!matches.length) {
     return (
       <div className="w-80 bg-black border-l border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Top Matches
-        </h2>
-        <div className="text-center text-gray-500 py-8">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-white">Learning Matches</h2>
+        </div>
+        <div className="text-center text-gray-300 py-8">
           <div className="text-4xl mb-2">🔍</div>
-          <p className="text-sm">No good matches found yet</p>
-          <p className="text-xs text-gray-400 mt-1">
-            Try adding more skills to find better matches
-          </p>
+          <p className="text-sm text-gray-300">No learning matches found</p>
+          <p className="text-xs text-gray-400 mt-1">Try adding more skills</p>
         </div>
       </div>
     );
@@ -146,66 +123,68 @@ export default function TopMatchesSidebar() {
 
   return (
     <div className="w-80 bg-black border-l border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-white-900 mb-4">Top Matches</h2>
-      <div className="space-y-4">
-        {topMatches.map((match) => (
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-white">Learning Matches</h2>
+      </div>
+      <div
+        className="space-y-4 h-[400px] overflow-y-auto pr-2"
+        style={{ scrollbarWidth: "thin", scrollbarColor: "#9ca3af #f3f4f6" }}
+      >
+        {matches.map((match) => (
           <div
             key={match.id}
-            className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => viewProfile(match.id)}
+            className="border rounded-lg p-3 hover:shadow-md cursor-pointer"
+            onClick={() => router.push(`/profile_page?id=${match.id}`)}
           >
-            <div className="flex items-center space-x-3 mb-3">
-              {match.profilePicUrl ? (
-                <div className="w-10 h-10 rounded-full overflow-hidden">
+            <div className="flex items-center space-x-3 mb-2">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  match.profilePicUrl
+                    ? ""
+                    : "bg-gradient-to-br from-blue-400 to-purple-500"
+                }`}
+              >
+                {match.profilePicUrl ? (
                   <img
                     src={match.profilePicUrl}
-                    alt={`${match.name}'s profile`}
-                    className="w-full h-full object-cover"
+                    alt={match.name}
+                    className="w-full h-full object-cover rounded-full"
                   />
-                </div>
-              ) : (
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">
-                    {match.name.charAt(0).toUpperCase()}
+                ) : (
+                  <span className="text-white font-semibold">
+                    {match.name?.[0]?.toUpperCase()}
                   </span>
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-white-900 truncate">
-                  {match.name}
-                </h3>
-                {match.email && (
-                  <p className="text-xs text-white-500 truncate">
-                    {match.email}
-                  </p>
                 )}
               </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-white truncate">
+                  {match.name}
+                </h3>
+              </div>
             </div>
-
-            <div className="space-y-1">
+            <div className="flex flex-wrap gap-1">
               {match.maxLearnScore !== undefined &&
-                match.maxLearnScore >= MATCH_THRESHOLD && (
-                  <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full inline-block mr-1">
-                    🎓 Good to Learn From
+                match.maxLearnScore >= LEARN_THRESHOLD && (
+                  <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                    🎓 Learn From
                   </div>
                 )}
               {match.maxTeachScore !== undefined &&
-                match.maxTeachScore >= MATCH_THRESHOLD && (
-                  <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full inline-block">
-                    👨‍🏫 Good to Teach
+                match.maxTeachScore >= TEACH_THRESHOLD && (
+                  <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    👨‍🏫 Teach
                   </div>
                 )}
             </div>
           </div>
         ))}
       </div>
-
-      <div className="mt-6 pt-4 border-t border-gray-200">
+      <div className="mt-4 pt-3 border-t border-gray-200">
         <button
-          onClick={() => router.push("/search_page")}
-          className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+          onClick={() => router.push("/learn_page")}
+          className="w-full text-sm text-blue-500 hover:text-blue-700"
         >
-          View All Members →
+          View All Learning Matches →
         </button>
       </div>
     </div>
